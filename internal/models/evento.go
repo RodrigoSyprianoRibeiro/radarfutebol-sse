@@ -112,6 +112,15 @@ type Evento struct {
 	AtaquesPerigososTimeCasa2Tempo FlexValue `json:"ataquesPerigososTimeCasa2Tempo"`
 	PenalidadesTimeCasa2Tempo      FlexValue `json:"penalidadesTimeCasa2Tempo"`
 
+	// Estatisticas 5 Min Casa
+	ChutesGolTimeCasa5Min        FlexValue `json:"chutesGolTimeCasa5Min"`
+	ChutesForaTimeCasa5Min       FlexValue `json:"chutesForaTimeCasa5Min"`
+	ChutesTraveTimeCasa5Min      FlexValue `json:"chutesTraveTimeCasa5Min"`
+	ChutesBloqueadoTimeCasa5Min  FlexValue `json:"chutesBloqueadoTimeCasa5Min"`
+	EscanteiosTimeCasa5Min       FlexValue `json:"escanteiosTimeCasa5Min"`
+	AtaquesPerigososTimeCasa5Min FlexValue `json:"ataquesPerigososTimeCasa5Min"`
+	PenalidadesTimeCasa5Min      FlexValue `json:"penalidadesTimeCasa5Min"`
+
 	// Estatisticas 10 Min Casa
 	ChutesGolTimeCasa10Min        FlexValue `json:"chutesGolTimeCasa10Min"`
 	ChutesForaTimeCasa10Min       FlexValue `json:"chutesForaTimeCasa10Min"`
@@ -150,6 +159,15 @@ type Evento struct {
 	ClassEscanteiosTimeCasa2Tempo       string `json:"classEscanteiosTimeCasa2Tempo"`
 	ClassAtaquesPerigososTimeCasa2Tempo string `json:"classAtaquesPerigososTimeCasa2Tempo"`
 	ClassPenalidadesTimeCasa2Tempo      string `json:"classPenalidadesTimeCasa2Tempo"`
+
+	// Classes CSS 5 Min Casa
+	ClassChutesGolTimeCasa5Min        string `json:"classChutesGolTimeCasa5Min"`
+	ClassChutesForaTimeCasa5Min       string `json:"classChutesForaTimeCasa5Min"`
+	ClassChutesTraveTimeCasa5Min      string `json:"classChutesTraveTimeCasa5Min"`
+	ClassChutesBloqueadoTimeCasa5Min  string `json:"classChutesBloqueadoTimeCasa5Min"`
+	ClassEscanteiosTimeCasa5Min       string `json:"classEscanteiosTimeCasa5Min"`
+	ClassAtaquesPerigososTimeCasa5Min string `json:"classAtaquesPerigososTimeCasa5Min"`
+	ClassPenalidadesTimeCasa5Min      string `json:"classPenalidadesTimeCasa5Min"`
 
 	// Classes CSS 10 Min Casa
 	ClassChutesGolTimeCasa10Min        string `json:"classChutesGolTimeCasa10Min"`
@@ -190,6 +208,15 @@ type Evento struct {
 	AtaquesPerigososTimeFora2Tempo FlexValue `json:"ataquesPerigososTimeFora2Tempo"`
 	PenalidadesTimeFora2Tempo      FlexValue `json:"penalidadesTimeFora2Tempo"`
 
+	// Estatisticas 5 Min Fora
+	ChutesGolTimeFora5Min        FlexValue `json:"chutesGolTimeFora5Min"`
+	ChutesForaTimeFora5Min       FlexValue `json:"chutesForaTimeFora5Min"`
+	ChutesTraveTimeFora5Min      FlexValue `json:"chutesTraveTimeFora5Min"`
+	ChutesBloqueadoTimeFora5Min  FlexValue `json:"chutesBloqueadoTimeFora5Min"`
+	EscanteiosTimeFora5Min       FlexValue `json:"escanteiosTimeFora5Min"`
+	AtaquesPerigososTimeFora5Min FlexValue `json:"ataquesPerigososTimeFora5Min"`
+	PenalidadesTimeFora5Min      FlexValue `json:"penalidadesTimeFora5Min"`
+
 	// Estatisticas 10 Min Fora
 	ChutesGolTimeFora10Min        FlexValue `json:"chutesGolTimeFora10Min"`
 	ChutesForaTimeFora10Min       FlexValue `json:"chutesForaTimeFora10Min"`
@@ -228,6 +255,15 @@ type Evento struct {
 	ClassEscanteiosTimeFora2Tempo       string `json:"classEscanteiosTimeFora2Tempo"`
 	ClassAtaquesPerigososTimeFora2Tempo string `json:"classAtaquesPerigososTimeFora2Tempo"`
 	ClassPenalidadesTimeFora2Tempo      string `json:"classPenalidadesTimeFora2Tempo"`
+
+	// Classes CSS 5 Min Fora
+	ClassChutesGolTimeFora5Min        string `json:"classChutesGolTimeFora5Min"`
+	ClassChutesForaTimeFora5Min       string `json:"classChutesForaTimeFora5Min"`
+	ClassChutesTraveTimeFora5Min      string `json:"classChutesTraveTimeFora5Min"`
+	ClassChutesBloqueadoTimeFora5Min  string `json:"classChutesBloqueadoTimeFora5Min"`
+	ClassEscanteiosTimeFora5Min       string `json:"classEscanteiosTimeFora5Min"`
+	ClassAtaquesPerigososTimeFora5Min string `json:"classAtaquesPerigososTimeFora5Min"`
+	ClassPenalidadesTimeFora5Min      string `json:"classPenalidadesTimeFora5Min"`
 
 	// Classes CSS 10 Min Fora
 	ClassChutesGolTimeFora10Min        string `json:"classChutesGolTimeFora10Min"`
