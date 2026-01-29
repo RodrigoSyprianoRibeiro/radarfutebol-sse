@@ -1,0 +1,4 @@
+.env
+sse-server
+sse-server-linux
+*.exe
