@@ -274,6 +274,12 @@ type Evento struct {
 	ClassAtaquesPerigososTimeFora10Min string `json:"classAtaquesPerigososTimeFora10Min"`
 	ClassPenalidadesTimeFora10Min      string `json:"classPenalidadesTimeFora10Min"`
 
+	// Score de Lances (SL) - usado para alertas de pressao
+	ScoreLances10MinTimeCasa      FlexValue `json:"scoreLances10MinTimeCasa"`
+	ScoreLances10MinTimeFora      FlexValue `json:"scoreLances10MinTimeFora"`
+	ClassScoreLances10MinTimeCasa string    `json:"classScoreLances10MinTimeCasa"`
+	ClassScoreLances10MinTimeFora string    `json:"classScoreLances10MinTimeFora"`
+
 	// Alertas (FlexBool pois PHP envia 0/1)
 	AlertarGolTimeCasa           FlexBool `json:"alertarGolTimeCasa"`
 	AlertarPenalTimeCasa         FlexBool `json:"alertarPenalTimeCasa"`
