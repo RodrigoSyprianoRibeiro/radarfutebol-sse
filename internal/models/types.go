@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 // FlexValue aceita string, number ou null do JSON
@@ -48,6 +49,19 @@ func (f FlexValue) MarshalJSON() ([]byte, error) {
 
 func (f FlexValue) String() string {
 	return string(f)
+}
+
+// Float converte FlexValue para float64 (retorna 0 se não for numérico)
+func (f FlexValue) Float() float64 {
+	s := string(f)
+	if s == "" || s == "-" {
+		return 0
+	}
+	val, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0
+	}
+	return val
 }
 
 // FlexInt aceita int ou null do JSON

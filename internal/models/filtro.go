@@ -29,6 +29,8 @@ type Filtro struct {
 	Empatado                    bool
 	FiltroMomentoGol            bool
 	FiltroPressao               bool
+	FiltroAlertas               bool
+	FiltroDiferencaXg           bool
 }
 
 // ParseFiltroFromRequest extrai filtros da query string igual ao Laravel
@@ -57,6 +59,8 @@ func ParseFiltroFromRequest(r *http.Request) *Filtro {
 		Empatado:                    getBoolParam(q.Get("empatado")),
 		FiltroMomentoGol:            getBoolParam(q.Get("filtroMomentoGol")),
 		FiltroPressao:               getBoolParam(q.Get("filtroPressao")),
+		FiltroAlertas:               getBoolParam(q.Get("filtroAlertas")),
+		FiltroDiferencaXg:           getBoolParam(q.Get("filtroDiferencaXg")),
 	}
 }
 

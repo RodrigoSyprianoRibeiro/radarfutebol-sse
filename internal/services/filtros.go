@@ -318,6 +318,27 @@ func aplicaFiltros(evento *models.Evento, filtro *models.Filtro, prefs *Preferen
 		return false
 	}
 
+	// Filtro alertas: mostra jogos com Momento de Gol OU Pressao Individual
+	if filtro.FiltroAlertas {
+		if !evento.AlertaMomentoGolAtivo.Bool() && !evento.AlertaPressaoIndividualAtivo.Bool() {
+			return false
+		}
+	}
+
+	// Filtro diferenca xG: mostra jogos onde um time tem 10x mais xG que o outro
+	// Regra: xG >= 10 E xG >= outro * 10
+	if filtro.FiltroDiferencaXg {
+		xgCasa := evento.Pontos10MinTimeCasa.Float()
+		xgFora := evento.Pontos10MinTimeFora.Float()
+
+		casaTemDiferenca := xgCasa >= 10 && xgCasa >= xgFora*10
+		foraTemDiferenca := xgFora >= 10 && xgFora >= xgCasa*10
+
+		if !casaTemDiferenca && !foraTemDiferenca {
+			return false
+		}
+	}
+
 	// Filtro busca
 	if filtro.CampoBusca != "" {
 		busca := strings.ToLower(filtro.CampoBusca)

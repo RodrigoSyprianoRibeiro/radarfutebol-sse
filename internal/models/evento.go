@@ -287,8 +287,17 @@ type Evento struct {
 	AlertarPenalTimeFora         FlexBool `json:"alertarPenalTimeFora"`
 	AlertarSomGol                FlexBool `json:"alertarSomGol"`
 	Cuidado                      FlexBool `json:"cuidado"`
-	AlertaMomentoGolAtivo        FlexBool `json:"alertaMomentoGolAtivo"`
-	AlertaPressaoIndividualAtivo FlexBool `json:"alertaPressaoIndividualAtivo"`
+	AlertaMomentoGolAtivo        FlexBool  `json:"alertaMomentoGolAtivo"`
+	AlertaMomentoGolValor        FlexValue `json:"alertaMomentoGolValor"`
+	AlertaPressaoIndividualAtivo FlexBool  `json:"alertaPressaoIndividualAtivo"`
+	AlertaPressaoIndividualTime  string    `json:"alertaPressaoIndividualTime"`
+	AlertaPressaoIndividualNome  string    `json:"alertaPressaoIndividualNome"`
+	AlertaPressaoIndividualValor FlexValue `json:"alertaPressaoIndividualValor"`
+	PressaoTimeCasa              FlexValue `json:"pressaoTimeCasa"`
+	PressaoTimeFora              FlexValue `json:"pressaoTimeFora"`
+	ClassPressaoTimeCasa         string    `json:"classPressaoTimeCasa"`
+	ClassPressaoTimeFora         string    `json:"classPressaoTimeFora"`
+	SomaPressao                  FlexValue `json:"somaPressao"`
 
 	// Icones
 	IconeComentarioTimeCasa string `json:"iconeComentarioTimeCasa"`
