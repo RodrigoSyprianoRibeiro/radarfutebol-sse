@@ -1,13 +1,49 @@
 package services
 
 import (
+	"encoding/json"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"radarfutebol-sse/internal/models"
 )
+
+// Cache de alertas de gol por usuario (evita som repetido)
+// Chave: alerta-gol-usuario-{userId}, Valor: map[idEvento]tempo
+func getAlertasGolUsuario(userID int) map[string]string {
+	if rdbPrefs == nil || userID == 0 {
+		return make(map[string]string)
+	}
+
+	key := fmt.Sprintf("alerta-gol-usuario-%d", userID)
+	data, err := rdbPrefs.Get(ctx, key).Result()
+	if err != nil || data == "" {
+		return make(map[string]string)
+	}
+
+	var alertas map[string]string
+	if err := json.Unmarshal([]byte(data), &alertas); err != nil {
+		return make(map[string]string)
+	}
+	return alertas
+}
+
+func setAlertasGolUsuario(userID int, alertas map[string]string) {
+	if rdbPrefs == nil || userID == 0 {
+		return
+	}
+
+	key := fmt.Sprintf("alerta-gol-usuario-%d", userID)
+	data, err := json.Marshal(alertas)
+	if err != nil {
+		return
+	}
+	rdbPrefs.Set(ctx, key, string(data), 5*time.Minute)
+}
 
 // PreferenciasUsuario preferencias de campeonatos e jogos favoritos
 type PreferenciasUsuario struct {
@@ -22,6 +58,13 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 	countJogosTotal := 0
 	countGols := 0
 
+	// Cache de alertas de gol do usuario (evita som repetido)
+	var alertasGol map[string]string
+	if filtro.SomLigado && filtro.IdUsuario > 0 {
+		alertasGol = getAlertasGolUsuario(filtro.IdUsuario)
+	}
+	alertasGolModificado := false
+
 	for _, evento := range eventos {
 		if !aplicaFiltros(evento, filtro, prefs) {
 			continue
@@ -33,8 +76,18 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 		countJogosTotal++
 
 		// Conta gols (alertarSomGol ativo e som ligado)
-		if filtro.SomLigado && evento.AlertarSomGol.Bool() {
-			countGols++
+		// Só conta se ainda não notificou este gol (baseado no tempo do jogo)
+		if filtro.SomLigado && filtro.IdUsuario > 0 && evento.AlertarSomGol.Bool() {
+			idEventoStr := strconv.Itoa(evento.IdEvento)
+			tempoAtual := evento.TempoAtual
+			tempoAnterior, jaNotificou := alertasGol[idEventoStr]
+
+			// Só conta como novo gol se não notificou ou se o tempo mudou
+			if !jaNotificou || tempoAnterior != tempoAtual {
+				countGols++
+				alertasGol[idEventoStr] = tempoAtual
+				alertasGolModificado = true
+			}
 		}
 
 		// Marca favoritos
@@ -45,6 +98,11 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 		}
 
 		jogosFiltrados = append(jogosFiltrados, evento)
+	}
+
+	// Salva cache de alertas se foi modificado
+	if alertasGolModificado {
+		setAlertasGolUsuario(filtro.IdUsuario, alertasGol)
 	}
 
 	// Ordenar
@@ -72,6 +130,13 @@ func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *
 	countJogosTotal := 0
 	countGols := 0
 
+	// Cache de alertas de gol do usuario (evita som repetido)
+	var alertasGol map[string]string
+	if filtro.SomLigado && filtro.IdUsuario > 0 {
+		alertasGol = getAlertasGolUsuario(filtro.IdUsuario)
+	}
+	alertasGolModificado := false
+
 	for _, evento := range eventos {
 		if !aplicaFiltros(evento, filtro, prefs) {
 			continue
@@ -83,8 +148,18 @@ func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *
 		countJogosTotal++
 
 		// Conta gols (alertarSomGol ativo e som ligado)
-		if filtro.SomLigado && evento.AlertarSomGol.Bool() {
-			countGols++
+		// Só conta se ainda não notificou este gol (baseado no tempo do jogo)
+		if filtro.SomLigado && filtro.IdUsuario > 0 && evento.AlertarSomGol.Bool() {
+			idEventoStr := strconv.Itoa(evento.IdEvento)
+			tempoAtual := evento.TempoAtual
+			tempoAnterior, jaNotificou := alertasGol[idEventoStr]
+
+			// Só conta como novo gol se não notificou ou se o tempo mudou
+			if !jaNotificou || tempoAnterior != tempoAtual {
+				countGols++
+				alertasGol[idEventoStr] = tempoAtual
+				alertasGolModificado = true
+			}
 		}
 
 		// Marca favoritos
@@ -95,6 +170,11 @@ func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *
 		}
 
 		jogosFiltrados = append(jogosFiltrados, evento)
+	}
+
+	// Salva cache de alertas se foi modificado
+	if alertasGolModificado {
+		setAlertasGolUsuario(filtro.IdUsuario, alertasGol)
 	}
 
 	// Ordenar
