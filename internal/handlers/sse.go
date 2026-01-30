@@ -14,12 +14,15 @@ import (
 
 // SSEHandler gerencia conexoes SSE
 type SSEHandler struct {
-	connections int64 // atomic counter
+	connections int64 // atomic counter para total de conexoes
+	maxConns    int64 // limite maximo de conexoes (0 = sem limite)
 }
 
 // NewSSEHandler cria um novo handler SSE
 func NewSSEHandler() *SSEHandler {
-	return &SSEHandler{}
+	return &SSEHandler{
+		maxConns: 10000, // Limite de 10k conexoes simultaneas
+	}
 }
 
 // RegisterRoutes registra as rotas SSE
@@ -37,6 +40,7 @@ func (h *SSEHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":      "ok",
 		"connections": atomic.LoadInt64(&h.connections),
+		"maxConns":    h.maxConns,
 		"timestamp":   time.Now().Unix(),
 	})
 }
@@ -46,6 +50,7 @@ func (h *SSEHandler) handleStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"connections": atomic.LoadInt64(&h.connections),
+		"maxConns":    h.maxConns,
 		"uptime":      time.Now().Unix(),
 	})
 }
@@ -62,6 +67,13 @@ func (h *SSEHandler) handleHome(w http.ResponseWriter, r *http.Request) {
 
 // handleSSE gerencia uma conexao SSE
 func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint string) {
+	// Verifica limite de conexoes
+	currentConns := atomic.LoadInt64(&h.connections)
+	if h.maxConns > 0 && currentConns >= h.maxConns {
+		http.Error(w, "Servidor sobrecarregado, tente novamente", http.StatusServiceUnavailable)
+		return
+	}
+
 	// Headers SSE
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -81,12 +93,18 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 
 	// Incrementa contador de conexoes (atomic)
 	connCount := atomic.AddInt64(&h.connections, 1)
-	log.Printf("SSE %s: Nova conexao (user=%d) - Total: %d", endpoint, filtro.IdUsuario, connCount)
+
+	// Log apenas a cada 100 conexoes para reduzir I/O
+	if connCount%100 == 0 || connCount <= 10 {
+		log.Printf("SSE %s: Nova conexao (user=%d) - Total: %d", endpoint, filtro.IdUsuario, connCount)
+	}
 
 	// Decrementa ao fechar
 	defer func() {
 		newCount := atomic.AddInt64(&h.connections, -1)
-		log.Printf("SSE %s: Conexao fechada (user=%d) - Total: %d", endpoint, filtro.IdUsuario, newCount)
+		if newCount%100 == 0 || newCount <= 10 {
+			log.Printf("SSE %s: Conexao fechada (user=%d) - Total: %d", endpoint, filtro.IdUsuario, newCount)
+		}
 	}()
 
 	// Envia retry interval (10 segundos)
@@ -100,8 +118,11 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 	// Canal para detectar quando cliente desconecta
 	ctx := r.Context()
 
+	// Obtem broadcaster para usar cache em memoria
+	broadcaster := services.GetBroadcaster()
+
 	// Envia primeiro update imediatamente
-	h.sendUpdateFiltrado(w, flusher, endpoint, filtro)
+	h.sendUpdateCached(w, flusher, endpoint, filtro, broadcaster)
 
 	for {
 		select {
@@ -109,13 +130,36 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 			// Cliente desconectou
 			return
 		case <-ticker.C:
-			// Envia update periodico com filtros
-			h.sendUpdateFiltrado(w, flusher, endpoint, filtro)
+			// Envia update periodico usando cache em memoria
+			h.sendUpdateCached(w, flusher, endpoint, filtro, broadcaster)
 		}
 	}
 }
 
-// sendUpdateFiltrado envia um update SSE com filtros aplicados
+// sendUpdateCached envia um update SSE usando cache em memoria do Broadcaster
+func (h *SSEHandler) sendUpdateCached(w http.ResponseWriter, flusher http.Flusher, endpoint string, filtro *models.Filtro, broadcaster *services.Broadcaster) {
+	var jsonData []byte
+	var err error
+
+	switch endpoint {
+	case "painel":
+		jsonData, err = broadcaster.GetEventosPainelFiltradoCached(filtro)
+	case "home":
+		jsonData, err = broadcaster.GetEventosHomeFiltradoCached(filtro)
+	}
+
+	if err != nil {
+		log.Printf("SSE %s: Erro ao buscar dados: %v", endpoint, err)
+		fmt.Fprintf(w, "event: error\ndata: {\"error\": \"%s\"}\n\n", err.Error())
+		flusher.Flush()
+		return
+	}
+
+	fmt.Fprintf(w, "event: update\ndata: %s\n\n", jsonData)
+	flusher.Flush()
+}
+
+// sendUpdateFiltrado envia um update SSE com filtros aplicados (fallback sem cache)
 func (h *SSEHandler) sendUpdateFiltrado(w http.ResponseWriter, flusher http.Flusher, endpoint string, filtro *models.Filtro) {
 	var jsonData []byte
 	var err error
@@ -163,6 +207,13 @@ func (h *SSEHandler) sendUpdate(w http.ResponseWriter, flusher http.Flusher, end
 
 // handleOraculo endpoint SSE para o oraculo de um jogo especifico
 func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
+	// Verifica limite de conexoes
+	currentConns := atomic.LoadInt64(&h.connections)
+	if h.maxConns > 0 && currentConns >= h.maxConns {
+		http.Error(w, "Servidor sobrecarregado, tente novamente", http.StatusServiceUnavailable)
+		return
+	}
+
 	// Extrai idWilliamhill do path: /sse/oraculo/{idWilliamhill}
 	path := r.URL.Path
 	idWilliamhill := path[len("/sse/oraculo/"):]
@@ -187,25 +238,30 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 
 	// Incrementa contador
 	connCount := atomic.AddInt64(&h.connections, 1)
-	log.Printf("SSE oraculo: Nova conexao (jogo=%s) - Total: %d", idWilliamhill, connCount)
+	if connCount%100 == 0 || connCount <= 10 {
+		log.Printf("SSE oraculo: Nova conexao (jogo=%s) - Total: %d", idWilliamhill, connCount)
+	}
 
 	defer func() {
 		newCount := atomic.AddInt64(&h.connections, -1)
-		log.Printf("SSE oraculo: Conexao fechada (jogo=%s) - Total: %d", idWilliamhill, newCount)
+		if newCount%100 == 0 || newCount <= 10 {
+			log.Printf("SSE oraculo: Conexao fechada (jogo=%s) - Total: %d", idWilliamhill, newCount)
+		}
 	}()
 
 	// Envia retry interval
 	fmt.Fprintf(w, "retry: 10000\n\n")
 	flusher.Flush()
 
-	// Ticker a cada 2 segundos (mais rapido para o oraculo)
+	// Ticker a cada 2 segundos
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	ctx := r.Context()
+	broadcaster := services.GetBroadcaster()
 
 	// Envia primeiro update imediatamente
-	finished := h.sendOraculoUpdate(w, flusher, idWilliamhill)
+	finished := h.sendOraculoUpdateCached(w, flusher, idWilliamhill, broadcaster)
 	if finished {
 		return
 	}
@@ -215,7 +271,7 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			finished := h.sendOraculoUpdate(w, flusher, idWilliamhill)
+			finished := h.sendOraculoUpdateCached(w, flusher, idWilliamhill, broadcaster)
 			if finished {
 				return
 			}
@@ -223,7 +279,49 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// sendOraculoUpdate envia update do oraculo e retorna true se jogo finalizou
+// sendOraculoUpdateCached envia update do oraculo usando cache e retorna true se jogo finalizou
+func (h *SSEHandler) sendOraculoUpdateCached(w http.ResponseWriter, flusher http.Flusher, idWilliamhill string, broadcaster *services.Broadcaster) bool {
+	data, err := broadcaster.GetOraculoCached(idWilliamhill)
+	if err != nil {
+		log.Printf("SSE oraculo: Erro ao buscar dados (jogo=%s): %v", idWilliamhill, err)
+		fmt.Fprintf(w, "event: error\ndata: {\"error\": \"%s\"}\n\n", err.Error())
+		flusher.Flush()
+		return false
+	}
+
+	if data == nil {
+		// Jogo nao encontrado no cache
+		fmt.Fprintf(w, "event: error\ndata: {\"error\": \"Jogo nao encontrado no cache\"}\n\n")
+		flusher.Flush()
+		return false
+	}
+
+	// Monta resposta no formato esperado pelo Oraculo.vue
+	response := map[string]interface{}{
+		"oraculo":   data,
+		"timestamp": time.Now().Unix(),
+	}
+
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		log.Printf("SSE oraculo: Erro ao serializar (jogo=%s): %v", idWilliamhill, err)
+		return false
+	}
+
+	fmt.Fprintf(w, "event: update\ndata: %s\n\n", jsonData)
+	flusher.Flush()
+
+	// Verifica se jogo finalizou
+	if status, ok := data["status"].(string); ok && status == "finished" {
+		fmt.Fprintf(w, "event: finished\ndata: {}\n\n")
+		flusher.Flush()
+		return true
+	}
+
+	return false
+}
+
+// sendOraculoUpdate envia update do oraculo e retorna true se jogo finalizou (fallback)
 func (h *SSEHandler) sendOraculoUpdate(w http.ResponseWriter, flusher http.Flusher, idWilliamhill string) bool {
 	data, err := services.GetOraculoCache(idWilliamhill)
 	if err != nil {

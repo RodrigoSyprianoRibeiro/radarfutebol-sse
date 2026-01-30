@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"radarfutebol-sse/internal/config"
@@ -13,12 +14,27 @@ import (
 var rdb *redis.Client
 var ctx = context.Background()
 
-// InitRedis inicializa a conexao com o Redis
+// InitRedis inicializa a conexao com o Redis com pool otimizado para alta concorrencia
 func InitRedis(cfg config.RedisConfig) error {
 	rdb = redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		Password: cfg.Password,
 		DB:       0, // Database 0 para cache do oraculo
+
+		// Pool de conexoes otimizado para alta concorrencia
+		PoolSize:     100,             // Maximo de conexoes no pool
+		MinIdleConns: 10,              // Conexoes minimas mantidas abertas
+		PoolTimeout:  10 * time.Second, // Timeout para obter conexao do pool
+
+		// Timeouts de conexao
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+
+		// Retry
+		MaxRetries:      3,
+		MinRetryBackoff: 8 * time.Millisecond,
+		MaxRetryBackoff: 512 * time.Millisecond,
 	})
 
 	_, err := rdb.Ping(ctx).Result()
@@ -26,7 +42,7 @@ func InitRedis(cfg config.RedisConfig) error {
 		return fmt.Errorf("erro ao conectar Redis: %w", err)
 	}
 
-	log.Println("Redis conectado com sucesso")
+	log.Println("Redis conectado com sucesso (pool: 100 conexoes)")
 	return nil
 }
 
@@ -61,12 +77,27 @@ func GetOraculoCache(idWilliamhill string) (map[string]interface{}, error) {
 // rdbPrefs cliente Redis para preferencias (database 2)
 var rdbPrefs *redis.Client
 
-// InitRedisPreferencias inicializa conexao Redis para preferencias
+// InitRedisPreferencias inicializa conexao Redis para preferencias com pool otimizado
 func InitRedisPreferencias(host string, port int, password string) error {
 	rdbPrefs = redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", host, port),
 		Password: password,
 		DB:       2, // Database 2 para preferencias
+
+		// Pool menor pois preferencias sao menos acessadas
+		PoolSize:     50,
+		MinIdleConns: 5,
+		PoolTimeout:  10 * time.Second,
+
+		// Timeouts
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+
+		// Retry
+		MaxRetries:      3,
+		MinRetryBackoff: 8 * time.Millisecond,
+		MaxRetryBackoff: 512 * time.Millisecond,
 	})
 
 	_, err := rdbPrefs.Ping(ctx).Result()
@@ -74,7 +105,7 @@ func InitRedisPreferencias(host string, port int, password string) error {
 		return fmt.Errorf("erro ao conectar Redis preferencias: %w", err)
 	}
 
-	log.Println("Redis preferencias (DB 2) conectado com sucesso")
+	log.Println("Redis preferencias (DB 2) conectado com sucesso (pool: 50 conexoes)")
 	return nil
 }
 

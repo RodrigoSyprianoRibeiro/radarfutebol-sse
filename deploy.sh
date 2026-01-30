@@ -17,8 +17,9 @@ echo "[1/4] Git pull..."
 git pull origin master
 
 echo ""
-echo "[2/4] Build..."
-go build -o bin/radarfutebol-sse ./cmd/main.go
+echo "[2/4] Build (otimizado para producao)..."
+# -ldflags="-s -w" remove debug symbols, reduz tamanho do binario
+go build -ldflags="-s -w" -o bin/radarfutebol-sse ./cmd/main.go
 
 echo ""
 echo "[3/4] Restart PM2..."

@@ -1,0 +1,45 @@
+[Unit]
+Description=Radar Futebol SSE Server (Go)
+After=network.target redis-server.service
+Wants=redis-server.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/radarfutebol-sse
+ExecStart=/var/www/radarfutebol-sse/sse-go
+Restart=always
+RestartSec=5
+
+# Limites de recursos para alta performance
+LimitNOFILE=65535
+LimitNPROC=65535
+
+# Ambiente
+Environment=SERVER_PORT=3005
+Environment=REDIS_HOST=127.0.0.1
+Environment=REDIS_PORT=6379
+Environment=REDIS_PASSWORD=T3xXiNFhfdB6Qql6P3kt2KOy9PvibXtq
+Environment=MYSQL_HOST=127.0.0.1
+Environment=MYSQL_PORT=3306
+Environment=MYSQL_USER=radar
+Environment=MYSQL_PASSWORD=RadarFut2026Pr0d
+Environment=MYSQL_DATABASE=radarfutebol
+
+# Go runtime tuning
+Environment=GOGC=100
+Environment=GOMEMLIMIT=2GiB
+
+# Graceful shutdown
+TimeoutStopSec=30
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Logs
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sse-go
+
+[Install]
+WantedBy=multi-user.target
