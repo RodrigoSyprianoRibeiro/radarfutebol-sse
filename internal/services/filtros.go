@@ -53,7 +53,8 @@ type PreferenciasUsuario struct {
 
 // FiltrarEventosPainel filtra eventos para o painel igual ao Laravel
 func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs *PreferenciasUsuario) (*models.PainelResponse, error) {
-	var jogosFiltrados []*models.Evento
+	// Inicializa como slice vazio (nunca nil) para JSON serializar como [] ao inves de null
+	jogosFiltrados := make([]*models.Evento, 0)
 	countJogosLive := 0
 	countJogosTotal := 0
 	countGols := 0
@@ -125,7 +126,8 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 
 // FiltrarEventosHome filtra eventos para a home igual ao Laravel
 func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *PreferenciasUsuario) (*models.HomeResponse, error) {
-	var jogosFiltrados []*models.Evento
+	// Inicializa como slice vazio (nunca nil) para JSON serializar como [] ao inves de null
+	jogosFiltrados := make([]*models.Evento, 0)
 	countJogosLive := 0
 	countJogosTotal := 0
 	countGols := 0
