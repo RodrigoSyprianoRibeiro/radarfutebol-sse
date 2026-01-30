@@ -114,6 +114,11 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 		jogosFiltrados = jogosFiltrados[:filtro.CountJogosMostrar]
 	}
 
+	// Garante que o slice nunca seja nil para JSON serializar como []
+	if jogosFiltrados == nil {
+		jogosFiltrados = []*models.Evento{}
+	}
+
 	return &models.PainelResponse{
 		Eventos: jogosFiltrados,
 		Counts: models.Counts{
@@ -184,6 +189,11 @@ func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *
 
 	// Agrupar por campeonato e limitar
 	campeonatos := agruparPorCampeonato(jogosFiltrados, filtro.CountJogosMostrar, prefs)
+
+	// Garante que o slice nunca seja nil para JSON serializar como []
+	if campeonatos == nil {
+		campeonatos = []*models.Campeonato{}
+	}
 
 	return &models.HomeResponse{
 		Campeonatos: campeonatos,
