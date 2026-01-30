@@ -27,6 +27,7 @@ func (h *SSEHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/sse/health", h.handleHealth)
 	mux.HandleFunc("/sse/painel", h.handlePainel)
 	mux.HandleFunc("/sse/home", h.handleHome)
+	mux.HandleFunc("/sse/oraculo/", h.handleOraculo)
 	mux.HandleFunc("/stats", h.handleStats)
 }
 
@@ -158,4 +159,108 @@ func (h *SSEHandler) sendUpdate(w http.ResponseWriter, flusher http.Flusher, end
 
 	fmt.Fprintf(w, "event: update\ndata: %s\n\n", jsonData)
 	flusher.Flush()
+}
+
+// handleOraculo endpoint SSE para o oraculo de um jogo especifico
+func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
+	// Extrai idWilliamhill do path: /sse/oraculo/{idWilliamhill}
+	path := r.URL.Path
+	idWilliamhill := path[len("/sse/oraculo/"):]
+
+	if idWilliamhill == "" {
+		http.Error(w, "idWilliamhill obrigatorio", http.StatusBadRequest)
+		return
+	}
+
+	// Headers SSE
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "SSE not supported", http.StatusInternalServerError)
+		return
+	}
+
+	// Incrementa contador
+	connCount := atomic.AddInt64(&h.connections, 1)
+	log.Printf("SSE oraculo: Nova conexao (jogo=%s) - Total: %d", idWilliamhill, connCount)
+
+	defer func() {
+		newCount := atomic.AddInt64(&h.connections, -1)
+		log.Printf("SSE oraculo: Conexao fechada (jogo=%s) - Total: %d", idWilliamhill, newCount)
+	}()
+
+	// Envia retry interval
+	fmt.Fprintf(w, "retry: 10000\n\n")
+	flusher.Flush()
+
+	// Ticker a cada 2 segundos (mais rapido para o oraculo)
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	ctx := r.Context()
+
+	// Envia primeiro update imediatamente
+	finished := h.sendOraculoUpdate(w, flusher, idWilliamhill)
+	if finished {
+		return
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			finished := h.sendOraculoUpdate(w, flusher, idWilliamhill)
+			if finished {
+				return
+			}
+		}
+	}
+}
+
+// sendOraculoUpdate envia update do oraculo e retorna true se jogo finalizou
+func (h *SSEHandler) sendOraculoUpdate(w http.ResponseWriter, flusher http.Flusher, idWilliamhill string) bool {
+	data, err := services.GetOraculoCache(idWilliamhill)
+	if err != nil {
+		log.Printf("SSE oraculo: Erro ao buscar dados (jogo=%s): %v", idWilliamhill, err)
+		fmt.Fprintf(w, "event: error\ndata: {\"error\": \"%s\"}\n\n", err.Error())
+		flusher.Flush()
+		return false
+	}
+
+	if data == nil {
+		// Jogo nao encontrado no cache
+		fmt.Fprintf(w, "event: error\ndata: {\"error\": \"Jogo nao encontrado no cache\"}\n\n")
+		flusher.Flush()
+		return false
+	}
+
+	// Monta resposta no formato esperado pelo Oraculo.vue
+	response := map[string]interface{}{
+		"oraculo":   data,
+		"timestamp": time.Now().Unix(),
+	}
+
+	jsonData, err := json.Marshal(response)
+	if err != nil {
+		log.Printf("SSE oraculo: Erro ao serializar (jogo=%s): %v", idWilliamhill, err)
+		return false
+	}
+
+	fmt.Fprintf(w, "event: update\ndata: %s\n\n", jsonData)
+	flusher.Flush()
+
+	// Verifica se jogo finalizou
+	if status, ok := data["status"].(string); ok && status == "finished" {
+		fmt.Fprintf(w, "event: finished\ndata: {}\n\n")
+		flusher.Flush()
+		return true
+	}
+
+	return false
 }
