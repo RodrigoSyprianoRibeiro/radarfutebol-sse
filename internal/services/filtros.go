@@ -20,6 +20,7 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 	var jogosFiltrados []*models.Evento
 	countJogosLive := 0
 	countJogosTotal := 0
+	countGols := 0
 
 	for _, evento := range eventos {
 		if !aplicaFiltros(evento, filtro, prefs) {
@@ -30,6 +31,11 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 			countJogosLive++
 		}
 		countJogosTotal++
+
+		// Conta gols (alertarSomGol ativo e som ligado)
+		if filtro.SomLigado && evento.AlertarSomGol.Bool() {
+			countGols++
+		}
 
 		// Marca favoritos
 		if prefs != nil {
@@ -54,7 +60,7 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 		Counts: models.Counts{
 			Live:  countJogosLive,
 			Total: countJogosTotal,
-			Gols:  0,
+			Gols:  countGols,
 		},
 	}, nil
 }
@@ -64,6 +70,7 @@ func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *
 	var jogosFiltrados []*models.Evento
 	countJogosLive := 0
 	countJogosTotal := 0
+	countGols := 0
 
 	for _, evento := range eventos {
 		if !aplicaFiltros(evento, filtro, prefs) {
@@ -74,6 +81,11 @@ func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *
 			countJogosLive++
 		}
 		countJogosTotal++
+
+		// Conta gols (alertarSomGol ativo e som ligado)
+		if filtro.SomLigado && evento.AlertarSomGol.Bool() {
+			countGols++
+		}
 
 		// Marca favoritos
 		if prefs != nil {
@@ -96,7 +108,7 @@ func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *
 		Counts: models.Counts{
 			Live:  countJogosLive,
 			Total: countJogosTotal,
-			Gols:  0,
+			Gols:  countGols,
 		},
 	}, nil
 }
