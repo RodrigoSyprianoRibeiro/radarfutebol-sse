@@ -74,6 +74,22 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 		return
 	}
 
+	// Extrai filtros da query string (inclui idUsuario e token)
+	filtro := models.ParseFiltroFromRequest(r)
+
+	// Valida token do usuario (se fornecido)
+	if filtro.Token != "" {
+		valid, err := services.ValidarToken(filtro.IdUsuario, filtro.Token)
+		if err != nil {
+			log.Printf("SSE %s: Erro ao validar token (user=%d): %v", endpoint, filtro.IdUsuario, err)
+			// Continua mesmo com erro para nao quebrar o servico
+		} else if !valid {
+			log.Printf("SSE %s: Token invalido (user=%d)", endpoint, filtro.IdUsuario)
+			http.Error(w, "Token invalido", http.StatusUnauthorized)
+			return
+		}
+	}
+
 	// Headers SSE
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -87,9 +103,6 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 		http.Error(w, "SSE not supported", http.StatusInternalServerError)
 		return
 	}
-
-	// Extrai filtros da query string
-	filtro := models.ParseFiltroFromRequest(r)
 
 	// Incrementa contador de conexoes (atomic)
 	connCount := atomic.AddInt64(&h.connections, 1)
@@ -221,6 +234,25 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 	if idWilliamhill == "" {
 		http.Error(w, "idWilliamhill obrigatorio", http.StatusBadRequest)
 		return
+	}
+
+	// Extrai e valida token do usuario (se fornecido)
+	q := r.URL.Query()
+	token := q.Get("token")
+	idUsuario := 0
+	if idStr := q.Get("idUsuario"); idStr != "" {
+		fmt.Sscanf(idStr, "%d", &idUsuario)
+	}
+
+	if token != "" {
+		valid, err := services.ValidarToken(idUsuario, token)
+		if err != nil {
+			log.Printf("SSE oraculo: Erro ao validar token (user=%d): %v", idUsuario, err)
+		} else if !valid {
+			log.Printf("SSE oraculo: Token invalido (user=%d)", idUsuario)
+			http.Error(w, "Token invalido", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Headers SSE
