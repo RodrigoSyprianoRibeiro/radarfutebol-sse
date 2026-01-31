@@ -9,7 +9,6 @@ import (
 // Filtro parametros de filtro da requisicao SSE
 type Filtro struct {
 	IdUsuario                   int
-	Token                       string // Token de autenticacao do usuario
 	SomLigado                   bool
 	OrdemInicio                 bool
 	CampoBusca                  string
@@ -40,7 +39,6 @@ func ParseFiltroFromRequest(r *http.Request) *Filtro {
 
 	return &Filtro{
 		IdUsuario:                   getIntParam(q.Get("idUsuario"), 0),
-		Token:                       strings.TrimSpace(q.Get("token")),
 		SomLigado:                   getBoolParam(q.Get("somLigado")),
 		OrdemInicio:                 getBoolParam(q.Get("ordemInicio")),
 		CampoBusca:                  strings.TrimSpace(q.Get("campoBusca")),

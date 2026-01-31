@@ -74,31 +74,8 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 		return
 	}
 
-	// Extrai filtros da query string (inclui idUsuario e token)
+	// Extrai filtros da query string
 	filtro := models.ParseFiltroFromRequest(r)
-
-	// Validacao de seguranca: se tem idUsuario, DEVE ter token valido
-	// Sem token valido, trata como anonimo para evitar vazamento de dados
-	if filtro.IdUsuario > 0 {
-		if filtro.Token == "" {
-			// Usuario sem token = trata como anonimo (nao pode ver favoritos de outro usuario)
-			log.Printf("SSE %s: Usuario %d sem token, tratando como anonimo", endpoint, filtro.IdUsuario)
-			filtro.IdUsuario = 0
-		} else {
-			// Valida token
-			valid, err := services.ValidarToken(filtro.IdUsuario, filtro.Token)
-			if err != nil {
-				log.Printf("SSE %s: Erro ao validar token (user=%d): %v", endpoint, filtro.IdUsuario, err)
-				// Em caso de erro, trata como anonimo por seguranca
-				filtro.IdUsuario = 0
-			} else if !valid {
-				log.Printf("SSE %s: Token invalido (user=%d)", endpoint, filtro.IdUsuario)
-				http.Error(w, "Token invalido", http.StatusUnauthorized)
-				return
-			}
-			// Token valido - mantém idUsuario
-		}
-	}
 
 	// Headers SSE
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -244,25 +221,6 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 	if idWilliamhill == "" {
 		http.Error(w, "idWilliamhill obrigatorio", http.StatusBadRequest)
 		return
-	}
-
-	// Extrai e valida token do usuario (se fornecido)
-	q := r.URL.Query()
-	token := q.Get("token")
-	idUsuario := 0
-	if idStr := q.Get("idUsuario"); idStr != "" {
-		fmt.Sscanf(idStr, "%d", &idUsuario)
-	}
-
-	if token != "" {
-		valid, err := services.ValidarToken(idUsuario, token)
-		if err != nil {
-			log.Printf("SSE oraculo: Erro ao validar token (user=%d): %v", idUsuario, err)
-		} else if !valid {
-			log.Printf("SSE oraculo: Token invalido (user=%d)", idUsuario)
-			http.Error(w, "Token invalido", http.StatusUnauthorized)
-			return
-		}
 	}
 
 	// Headers SSE
