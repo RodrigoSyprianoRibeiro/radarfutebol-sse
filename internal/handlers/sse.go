@@ -77,16 +77,26 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 	// Extrai filtros da query string (inclui idUsuario e token)
 	filtro := models.ParseFiltroFromRequest(r)
 
-	// Valida token do usuario (se fornecido)
-	if filtro.Token != "" {
-		valid, err := services.ValidarToken(filtro.IdUsuario, filtro.Token)
-		if err != nil {
-			log.Printf("SSE %s: Erro ao validar token (user=%d): %v", endpoint, filtro.IdUsuario, err)
-			// Continua mesmo com erro para nao quebrar o servico
-		} else if !valid {
-			log.Printf("SSE %s: Token invalido (user=%d)", endpoint, filtro.IdUsuario)
-			http.Error(w, "Token invalido", http.StatusUnauthorized)
-			return
+	// Validacao de seguranca: se tem idUsuario, DEVE ter token valido
+	// Sem token valido, trata como anonimo para evitar vazamento de dados
+	if filtro.IdUsuario > 0 {
+		if filtro.Token == "" {
+			// Usuario sem token = trata como anonimo (nao pode ver favoritos de outro usuario)
+			log.Printf("SSE %s: Usuario %d sem token, tratando como anonimo", endpoint, filtro.IdUsuario)
+			filtro.IdUsuario = 0
+		} else {
+			// Valida token
+			valid, err := services.ValidarToken(filtro.IdUsuario, filtro.Token)
+			if err != nil {
+				log.Printf("SSE %s: Erro ao validar token (user=%d): %v", endpoint, filtro.IdUsuario, err)
+				// Em caso de erro, trata como anonimo por seguranca
+				filtro.IdUsuario = 0
+			} else if !valid {
+				log.Printf("SSE %s: Token invalido (user=%d)", endpoint, filtro.IdUsuario)
+				http.Error(w, "Token invalido", http.StatusUnauthorized)
+				return
+			}
+			// Token valido - mantém idUsuario
 		}
 	}
 

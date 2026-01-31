@@ -29,12 +29,9 @@ var tokenCache = &TokenCache{
 
 // ValidarToken verifica se o token e valido para o usuario
 // Retorna (valido, erro)
+// NOTA: Esta funcao so deve ser chamada quando token NAO e vazio
+// O handler deve tratar token vazio antes de chamar esta funcao
 func ValidarToken(userID int, token string) (bool, error) {
-	// Se nao tem token, permite acesso (usuarios nao logados podem ver home)
-	if token == "" {
-		return true, nil
-	}
-
 	// Verifica cache primeiro
 	cacheKey := fmt.Sprintf("%d:%s", userID, token)
 	if cached := tokenCache.get(cacheKey); cached != nil {
@@ -45,8 +42,8 @@ func ValidarToken(userID int, token string) (bool, error) {
 	valid, err := validarTokenNoBanco(userID, token)
 	if err != nil {
 		log.Printf("Erro ao validar token (user=%d): %v", userID, err)
-		// Em caso de erro de banco, permite acesso para nao quebrar o servico
-		return true, err
+		// Retorna erro - o handler decide se trata como anonimo ou nao
+		return false, err
 	}
 
 	// Cacheia resultado
