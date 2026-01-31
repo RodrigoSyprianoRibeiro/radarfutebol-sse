@@ -91,14 +91,22 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 			}
 		}
 
-		// Marca favoritos
+		// IMPORTANTE: Cria copia do evento para nao modificar o cache compartilhado
+		// Isso evita que favoritos de um usuario vazem para outros usuarios
+		eventoCopia := *evento
+
+		// Marca favoritos na copia (nao no original)
 		if prefs != nil {
-			idEventoStr := strconv.Itoa(evento.IdEvento)
-			evento.Favorito = models.FlexBool(prefs.JogosFavoritos[idEventoStr])
-			evento.CampeonatoFavorito = models.FlexBool(prefs.CampeonatosFavoritos[evento.IdCampeonatoUnico])
+			idEventoStr := strconv.Itoa(eventoCopia.IdEvento)
+			eventoCopia.Favorito = models.FlexBool(prefs.JogosFavoritos[idEventoStr])
+			eventoCopia.CampeonatoFavorito = models.FlexBool(prefs.CampeonatosFavoritos[eventoCopia.IdCampeonatoUnico])
+		} else {
+			// Se nao tem preferencias, garante que favorito esta false
+			eventoCopia.Favorito = models.FlexBool(false)
+			eventoCopia.CampeonatoFavorito = models.FlexBool(false)
 		}
 
-		jogosFiltrados = append(jogosFiltrados, evento)
+		jogosFiltrados = append(jogosFiltrados, &eventoCopia)
 	}
 
 	// Salva cache de alertas se foi modificado
@@ -169,14 +177,22 @@ func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *
 			}
 		}
 
-		// Marca favoritos
+		// IMPORTANTE: Cria copia do evento para nao modificar o cache compartilhado
+		// Isso evita que favoritos de um usuario vazem para outros usuarios
+		eventoCopia := *evento
+
+		// Marca favoritos na copia (nao no original)
 		if prefs != nil {
-			idEventoStr := strconv.Itoa(evento.IdEvento)
-			evento.Favorito = models.FlexBool(prefs.JogosFavoritos[idEventoStr])
-			evento.CampeonatoFavorito = models.FlexBool(prefs.CampeonatosFavoritos[evento.IdCampeonatoUnico])
+			idEventoStr := strconv.Itoa(eventoCopia.IdEvento)
+			eventoCopia.Favorito = models.FlexBool(prefs.JogosFavoritos[idEventoStr])
+			eventoCopia.CampeonatoFavorito = models.FlexBool(prefs.CampeonatosFavoritos[eventoCopia.IdCampeonatoUnico])
+		} else {
+			// Se nao tem preferencias, garante que favorito esta false
+			eventoCopia.Favorito = models.FlexBool(false)
+			eventoCopia.CampeonatoFavorito = models.FlexBool(false)
 		}
 
-		jogosFiltrados = append(jogosFiltrados, evento)
+		jogosFiltrados = append(jogosFiltrados, &eventoCopia)
 	}
 
 	// Salva cache de alertas se foi modificado
