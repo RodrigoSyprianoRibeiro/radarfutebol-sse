@@ -2,48 +2,27 @@ package services
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"log"
-	"sync"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
+
+// authCacheTTL tempo de vida do cache no Redis (5 minutos)
+const authCacheTTL = 5 * time.Minute
 
 // authCacheEntry entrada do cache de autenticacao
 type authCacheEntry struct {
-	idUsuario   int
-	isValid     bool
-	isAssinante bool
-	teamId      int
-	expiresAt   time.Time
+	IdUsuario   int  `json:"id_usuario"`
+	IsAssinante bool `json:"is_assinante"`
+	TeamId      int  `json:"team_id"`
 }
-
-// authCache cache de validacao de tokens
-var authCache sync.Map
-
-// authCacheTTL tempo de vida do cache (5 minutos)
-const authCacheTTL = 5 * time.Minute
 
 // InitAuthCache inicializa o cache de autenticacao
-// Inicia uma goroutine para limpeza periodica de entradas expiradas
 func InitAuthCache() {
-	go cleanupAuthCache()
-	log.Println("Cache de autenticacao inicializado")
-}
-
-// cleanupAuthCache limpa entradas expiradas do cache a cada 5 minutos
-func cleanupAuthCache() {
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		now := time.Now()
-		authCache.Range(func(key, value interface{}) bool {
-			entry := value.(authCacheEntry)
-			if now.After(entry.expiresAt) {
-				authCache.Delete(key)
-			}
-			return true
-		})
-	}
+	log.Println("Cache de autenticacao inicializado (usando Redis)")
 }
 
 // AuthResult resultado da validacao de token
@@ -56,6 +35,7 @@ type AuthResult struct {
 
 // ValidateToken valida o token e retorna dados do usuario
 // Busca apenas pelo token, sem precisar do idUsuario
+// Usa Redis como cache para evitar consultas frequentes ao MySQL
 func ValidateToken(token string) AuthResult {
 	// Sem token - usuario anonimo
 	if token == "" {
@@ -67,33 +47,28 @@ func ValidateToken(token string) AuthResult {
 		}
 	}
 
-	// Verifica cache primeiro (chave é o proprio token)
+	// Verifica cache no Redis primeiro
 	cacheKey := getCacheKey(token)
-	if cached, ok := authCache.Load(cacheKey); ok {
-		entry := cached.(authCacheEntry)
-		if time.Now().Before(entry.expiresAt) {
-			return AuthResult{
-				IdUsuario:   entry.idUsuario,
-				IsValid:     entry.isValid,
-				IsAssinante: entry.isAssinante,
-				TeamId:      entry.teamId,
-			}
+	if cached := getAuthFromRedis(cacheKey); cached != nil {
+		return AuthResult{
+			IdUsuario:   cached.IdUsuario,
+			IsValid:     true,
+			IsAssinante: cached.IsAssinante,
+			TeamId:      cached.TeamId,
 		}
-		// Cache expirado, remove
-		authCache.Delete(cacheKey)
 	}
 
 	// Consulta MySQL
 	result := queryToken(token)
 
-	// Salva no cache
-	authCache.Store(cacheKey, authCacheEntry{
-		idUsuario:   result.IdUsuario,
-		isValid:     result.IsValid,
-		isAssinante: result.IsAssinante,
-		teamId:      result.TeamId,
-		expiresAt:   time.Now().Add(authCacheTTL),
-	})
+	// Se token valido, salva no cache Redis
+	if result.IsValid && result.IdUsuario > 0 {
+		saveAuthToRedis(cacheKey, &authCacheEntry{
+			IdUsuario:   result.IdUsuario,
+			IsAssinante: result.IsAssinante,
+			TeamId:      result.TeamId,
+		})
+	}
 
 	return result
 }
@@ -101,11 +76,52 @@ func ValidateToken(token string) AuthResult {
 // getCacheKey gera a chave do cache para o token
 func getCacheKey(token string) string {
 	// Usa apenas os primeiros 20 caracteres do token para a chave
-	// (suficiente para identificacao sem usar muita memoria)
+	tokenPrefix := token
 	if len(token) > 20 {
-		return token[:20]
+		tokenPrefix = token[:20]
 	}
-	return token
+	return fmt.Sprintf("sse-auth:%s", tokenPrefix)
+}
+
+// getAuthFromRedis busca dados de autenticacao do Redis
+func getAuthFromRedis(key string) *authCacheEntry {
+	if rdb == nil {
+		return nil
+	}
+
+	data, err := rdb.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return nil // Chave nao existe
+	}
+	if err != nil {
+		log.Printf("Auth: Erro ao buscar cache Redis: %v", err)
+		return nil
+	}
+
+	var entry authCacheEntry
+	if err := json.Unmarshal([]byte(data), &entry); err != nil {
+		log.Printf("Auth: Erro ao decodificar cache: %v", err)
+		return nil
+	}
+
+	return &entry
+}
+
+// saveAuthToRedis salva dados de autenticacao no Redis
+func saveAuthToRedis(key string, entry *authCacheEntry) {
+	if rdb == nil {
+		return
+	}
+
+	data, err := json.Marshal(entry)
+	if err != nil {
+		log.Printf("Auth: Erro ao serializar cache: %v", err)
+		return
+	}
+
+	if err := rdb.Set(ctx, key, data, authCacheTTL).Err(); err != nil {
+		log.Printf("Auth: Erro ao salvar cache Redis: %v", err)
+	}
 }
 
 // queryToken consulta o banco para validar token (busca apenas pelo token)
