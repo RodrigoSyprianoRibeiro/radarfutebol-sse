@@ -77,16 +77,17 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 	// Extrai filtros da query string
 	filtro := models.ParseFiltroFromRequest(r)
 
-	// Valida token do usuario
-	authResult := services.ValidateUserToken(filtro.IdUsuario, filtro.Token)
+	// Valida token (busca usuario pelo token)
+	authResult := services.ValidateToken(filtro.Token)
 
-	// Se usuario > 0 e token invalido, retorna 401
-	if filtro.IdUsuario > 0 && filtro.Token != "" && !authResult.IsValid {
+	// Se token fornecido mas invalido, retorna 401
+	if filtro.Token != "" && !authResult.IsValid {
 		http.Error(w, "Token invalido", http.StatusUnauthorized)
 		return
 	}
 
-	// Define se é assinante no filtro
+	// Atualiza filtro com dados do usuario autenticado
+	filtro.IdUsuario = authResult.IdUsuario
 	filtro.IsAssinante = authResult.IsAssinante
 
 	// Headers SSE
@@ -246,16 +247,17 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 	// Extrai filtros da query string (para validacao de token)
 	filtro := models.ParseFiltroFromRequest(r)
 
-	// Valida token do usuario
-	authResult := services.ValidateUserToken(filtro.IdUsuario, filtro.Token)
+	// Valida token (busca usuario pelo token)
+	authResult := services.ValidateToken(filtro.Token)
 
-	// Se usuario > 0 e token invalido, retorna 401
-	if filtro.IdUsuario > 0 && filtro.Token != "" && !authResult.IsValid {
+	// Se token fornecido mas invalido, retorna 401
+	if filtro.Token != "" && !authResult.IsValid {
 		http.Error(w, "Token invalido", http.StatusUnauthorized)
 		return
 	}
 
-	// Define se é assinante no filtro
+	// Atualiza filtro com dados do usuario autenticado
+	filtro.IdUsuario = authResult.IdUsuario
 	filtro.IsAssinante = authResult.IsAssinante
 
 	// Headers SSE

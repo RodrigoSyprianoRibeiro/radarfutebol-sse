@@ -9,6 +9,7 @@ import (
 
 // authCacheEntry entrada do cache de autenticacao
 type authCacheEntry struct {
+	idUsuario   int
 	isValid     bool
 	isAssinante bool
 	teamId      int
@@ -47,38 +48,32 @@ func cleanupAuthCache() {
 
 // AuthResult resultado da validacao de token
 type AuthResult struct {
+	IdUsuario   int
 	IsValid     bool
 	IsAssinante bool
 	TeamId      int
 }
 
-// ValidateUserToken valida o token de um usuario
-// Retorna se o token é valido e se o usuario é assinante (team_id 1-4)
-func ValidateUserToken(idUsuario int, token string) AuthResult {
-	// Usuario anonimo (idUsuario = 0) - nao precisa validar token
-	if idUsuario == 0 {
+// ValidateToken valida o token e retorna dados do usuario
+// Busca apenas pelo token, sem precisar do idUsuario
+func ValidateToken(token string) AuthResult {
+	// Sem token - usuario anonimo
+	if token == "" {
 		return AuthResult{
+			IdUsuario:   0,
 			IsValid:     true, // Anonimo sempre valido
 			IsAssinante: false,
 			TeamId:      0,
 		}
 	}
 
-	// idUsuario > 0 mas sem token - trata como anonimo
-	if token == "" {
-		return AuthResult{
-			IsValid:     true,
-			IsAssinante: false,
-			TeamId:      0,
-		}
-	}
-
-	// Verifica cache primeiro
-	cacheKey := getCacheKey(idUsuario, token)
+	// Verifica cache primeiro (chave é o proprio token)
+	cacheKey := getCacheKey(token)
 	if cached, ok := authCache.Load(cacheKey); ok {
 		entry := cached.(authCacheEntry)
 		if time.Now().Before(entry.expiresAt) {
 			return AuthResult{
+				IdUsuario:   entry.idUsuario,
 				IsValid:     entry.isValid,
 				IsAssinante: entry.isAssinante,
 				TeamId:      entry.teamId,
@@ -89,10 +84,11 @@ func ValidateUserToken(idUsuario int, token string) AuthResult {
 	}
 
 	// Consulta MySQL
-	result := queryUserToken(idUsuario, token)
+	result := queryToken(token)
 
 	// Salva no cache
 	authCache.Store(cacheKey, authCacheEntry{
+		idUsuario:   result.IdUsuario,
 		isValid:     result.IsValid,
 		isAssinante: result.IsAssinante,
 		teamId:      result.TeamId,
@@ -102,47 +98,49 @@ func ValidateUserToken(idUsuario int, token string) AuthResult {
 	return result
 }
 
-// getCacheKey gera a chave do cache para o par usuario/token
-func getCacheKey(idUsuario int, token string) string {
-	// Usa apenas os primeiros 16 caracteres do token para a chave
+// getCacheKey gera a chave do cache para o token
+func getCacheKey(token string) string {
+	// Usa apenas os primeiros 20 caracteres do token para a chave
 	// (suficiente para identificacao sem usar muita memoria)
-	tokenPrefix := token
-	if len(token) > 16 {
-		tokenPrefix = token[:16]
+	if len(token) > 20 {
+		return token[:20]
 	}
-	return string(rune(idUsuario)) + ":" + tokenPrefix
+	return token
 }
 
-// queryUserToken consulta o banco para validar token
-func queryUserToken(idUsuario int, token string) AuthResult {
+// queryToken consulta o banco para validar token (busca apenas pelo token)
+func queryToken(token string) AuthResult {
 	if db == nil {
-		log.Printf("Auth: MySQL nao disponivel, tratando usuario %d como anonimo", idUsuario)
+		log.Printf("Auth: MySQL nao disponivel, tratando como anonimo")
 		return AuthResult{
+			IdUsuario:   0,
 			IsValid:     true, // Se nao tem MySQL, permite mas como anonimo
 			IsAssinante: false,
 			TeamId:      0,
 		}
 	}
 
-	var teamId int
+	var idUsuario, teamId int
 	err := db.QueryRow(
-		"SELECT current_team_id FROM users WHERE id = ? AND token_access = ?",
-		idUsuario, token,
-	).Scan(&teamId)
+		"SELECT id, current_team_id FROM users WHERE token_access = ?",
+		token,
+	).Scan(&idUsuario, &teamId)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// Token invalido - usuario existe mas token nao bate
-			log.Printf("Auth: Token invalido para usuario %d", idUsuario)
+			// Token invalido - nao existe
+			log.Printf("Auth: Token nao encontrado")
 			return AuthResult{
+				IdUsuario:   0,
 				IsValid:     false,
 				IsAssinante: false,
 				TeamId:      0,
 			}
 		}
 		// Erro de conexao - trata como anonimo para nao bloquear
-		log.Printf("Auth: Erro ao consultar usuario %d: %v", idUsuario, err)
+		log.Printf("Auth: Erro ao consultar token: %v", err)
 		return AuthResult{
+			IdUsuario:   0,
 			IsValid:     true,
 			IsAssinante: false,
 			TeamId:      0,
@@ -153,6 +151,7 @@ func queryUserToken(idUsuario int, token string) AuthResult {
 	isAssinante := teamId >= 1 && teamId <= 4
 
 	return AuthResult{
+		IdUsuario:   idUsuario,
 		IsValid:     true,
 		IsAssinante: isAssinante,
 		TeamId:      teamId,
