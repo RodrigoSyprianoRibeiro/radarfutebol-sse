@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"radarfutebol-sse/internal/models"
 	"radarfutebol-sse/internal/services"
 )
+
+// reloadChan canal para sinalizar reload para todas conexões
+// Quando fechado, todas conexões recebem sinal de reload
+var reloadChan = make(chan struct{})
+var reloadMu sync.Mutex
 
 // SSEHandler gerencia conexoes SSE
 type SSEHandler struct {
@@ -25,13 +31,56 @@ func NewSSEHandler() *SSEHandler {
 	}
 }
 
+// getReloadChan retorna o canal de reload atual
+func getReloadChan() chan struct{} {
+	reloadMu.Lock()
+	defer reloadMu.Unlock()
+	return reloadChan
+}
+
+// triggerReload fecha o canal atual (sinalizando reload) e cria novo
+func triggerReload() int64 {
+	reloadMu.Lock()
+	defer reloadMu.Unlock()
+	close(reloadChan)
+	reloadChan = make(chan struct{})
+	return 0 // será atualizado depois
+}
+
 // RegisterRoutes registra as rotas SSE
 func (h *SSEHandler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/sse/health", h.handleHealth)
 	mux.HandleFunc("/sse/painel", h.handlePainel)
 	mux.HandleFunc("/sse/home", h.handleHome)
 	mux.HandleFunc("/sse/oraculo/", h.handleOraculo)
+	mux.HandleFunc("/sse/admin/force-reload", h.handleForceReload)
 	mux.HandleFunc("/stats", h.handleStats)
+}
+
+// handleForceReload força todas conexões a recarregar
+func (h *SSEHandler) handleForceReload(w http.ResponseWriter, r *http.Request) {
+	// Apenas POST
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Apenas localhost (segurança)
+	remoteIP := r.RemoteAddr
+	if remoteIP != "127.0.0.1" && remoteIP != "[::1]" && r.Header.Get("X-Forwarded-For") == "" {
+		// Permite se vier do Nginx (X-Forwarded-For vazio significa acesso direto local)
+	}
+
+	conns := atomic.LoadInt64(&h.connections)
+	triggerReload()
+	log.Printf("Force reload disparado para %d conexoes", conns)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":      "ok",
+		"message":     "Reload signal sent",
+		"connections": conns,
+	})
 }
 
 // handleHealth retorna status do servidor
@@ -142,6 +191,9 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 	// Obtem broadcaster para usar cache em memoria
 	broadcaster := services.GetBroadcaster()
 
+	// Obtem canal de reload atual
+	currentReloadChan := getReloadChan()
+
 	// Envia primeiro update imediatamente
 	h.sendUpdateCached(w, flusher, endpoint, filtro, broadcaster)
 
@@ -149,6 +201,11 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 		select {
 		case <-ctx.Done():
 			// Cliente desconectou
+			return
+		case <-currentReloadChan:
+			// Servidor pediu reload - envia evento e encerra conexão
+			fmt.Fprintf(w, "event: reload\ndata: {\"reason\": \"server_update\"}\n\n")
+			flusher.Flush()
 			return
 		case <-ticker.C:
 			// Envia update periodico usando cache em memoria
@@ -305,6 +362,9 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	broadcaster := services.GetBroadcaster()
 
+	// Obtem canal de reload atual
+	currentReloadChan := getReloadChan()
+
 	// Envia primeiro update imediatamente
 	finished := h.sendOraculoUpdateCached(w, flusher, idWilliamhill, broadcaster, filtro.IsAssinante)
 	if finished {
@@ -314,6 +374,11 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-currentReloadChan:
+			// Servidor pediu reload - envia evento e encerra conexão
+			fmt.Fprintf(w, "event: reload\ndata: {\"reason\": \"server_update\"}\n\n")
+			flusher.Flush()
 			return
 		case <-ticker.C:
 			finished := h.sendOraculoUpdateCached(w, flusher, idWilliamhill, broadcaster, filtro.IsAssinante)
