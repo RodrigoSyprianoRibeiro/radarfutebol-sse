@@ -127,8 +127,8 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 	fmt.Fprintf(w, "retry: 10000\n\n")
 	flusher.Flush()
 
-	// Ticker diferenciado: 2s para assinantes, 5s para free/anonimo
-	tickerDuration := 5 * time.Second
+	// Ticker diferenciado: 2s para assinantes, 10s para free/anonimo
+	tickerDuration := 10 * time.Second
 	if filtro.IsAssinante {
 		tickerDuration = 2 * time.Second
 	}
@@ -292,8 +292,8 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "retry: 10000\n\n")
 	flusher.Flush()
 
-	// Ticker diferenciado: 2s para assinantes, 5s para free/anonimo
-	tickerDuration := 5 * time.Second
+	// Ticker diferenciado: 2s para assinantes, 10s para free/anonimo
+	tickerDuration := 10 * time.Second
 	if filtro.IsAssinante {
 		tickerDuration = 2 * time.Second
 	}
