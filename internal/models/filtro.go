@@ -9,6 +9,8 @@ import (
 // Filtro parametros de filtro da requisicao SSE
 type Filtro struct {
 	IdUsuario                   int
+	Token                       string // Token de acesso do usuario
+	IsAssinante                 bool   // Se o usuario é assinante (team_id 1-4)
 	SomLigado                   bool
 	OrdemInicio                 bool
 	CampoBusca                  string
@@ -39,6 +41,8 @@ func ParseFiltroFromRequest(r *http.Request) *Filtro {
 
 	return &Filtro{
 		IdUsuario:                   getIntParam(q.Get("idUsuario"), 0),
+		Token:                       strings.TrimSpace(q.Get("token")),
+		IsAssinante:                 false, // Sera definido pelo handler apos validacao
 		SomLigado:                   getBoolParam(q.Get("somLigado")),
 		OrdemInicio:                 getBoolParam(q.Get("ordemInicio")),
 		CampoBusca:                  strings.TrimSpace(q.Get("campoBusca")),

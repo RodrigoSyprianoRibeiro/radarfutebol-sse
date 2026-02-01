@@ -106,7 +106,13 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 			eventoCopia.CampeonatoFavorito = models.FlexBool(false)
 		}
 
-		jogosFiltrados = append(jogosFiltrados, &eventoCopia)
+		// Se usuario free/anonimo, filtra dados sensiveis
+		if !filtro.IsAssinante {
+			eventoFiltrado := eventoCopia.FiltrarParaFree()
+			jogosFiltrados = append(jogosFiltrados, eventoFiltrado)
+		} else {
+			jogosFiltrados = append(jogosFiltrados, &eventoCopia)
+		}
 	}
 
 	// Salva cache de alertas se foi modificado
@@ -192,7 +198,13 @@ func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *
 			eventoCopia.CampeonatoFavorito = models.FlexBool(false)
 		}
 
-		jogosFiltrados = append(jogosFiltrados, &eventoCopia)
+		// Se usuario free/anonimo, filtra dados sensiveis
+		if !filtro.IsAssinante {
+			eventoFiltrado := eventoCopia.FiltrarParaFree()
+			jogosFiltrados = append(jogosFiltrados, eventoFiltrado)
+		} else {
+			jogosFiltrados = append(jogosFiltrados, &eventoCopia)
+		}
 	}
 
 	// Salva cache de alertas se foi modificado
@@ -574,4 +586,158 @@ func levenshteinDistance(a, b string) int {
 	}
 
 	return matrix[len(a)][len(b)]
+}
+
+// FiltrarOraculoParaFree filtra dados do oraculo para usuarios free/anonimos
+// Remove: SL, alertas avancados, estatisticas, probabilidades, xG, pontos10Min, pressao, analise IA
+func FiltrarOraculoParaFree(data map[string]interface{}) map[string]interface{} {
+	// Cria copia do mapa
+	copia := make(map[string]interface{})
+	for k, v := range data {
+		copia[k] = v
+	}
+
+	// Campos a zerar (definir como nil/vazio)
+	camposZerar := []string{
+		// Score de Lances (SL)
+		"scoreLances10MinTimeCasa", "scoreLances10MinTimeFora",
+		"classScoreLances10MinTimeCasa", "classScoreLances10MinTimeFora",
+
+		// Alertas avancados
+		"alertaMomentoGolAtivo", "alertaMomentoGolValor",
+		"alertaPressaoIndividualAtivo", "alertaPressaoIndividualTime",
+		"alertaPressaoIndividualNome", "alertaPressaoIndividualValor",
+		"pressaoTimeCasa", "pressaoTimeFora",
+		"classPressaoTimeCasa", "classPressaoTimeFora",
+		"somaPressao",
+
+		// Estatisticas Time Casa
+		"posseBolaTimeCasa", "chutesGolTimeCasa", "chutesForaTimeCasa",
+		"chutesTraveTimeCasa", "chutesBloqueadoTimeCasa", "escanteiosTimeCasa",
+		"ataquesPerigososTimeCasa", "penalidadesTimeCasa",
+		"probabilidadesTimeCasa", "pontos10MinTimeCasa",
+
+		// Estatisticas 1 Tempo Casa
+		"chutesGolTimeCasa1Tempo", "chutesForaTimeCasa1Tempo",
+		"chutesTraveTimeCasa1Tempo", "chutesBloqueadoTimeCasa1Tempo",
+		"escanteiosTimeCasa1Tempo", "ataquesPerigososTimeCasa1Tempo",
+		"penalidadesTimeCasa1Tempo",
+
+		// Estatisticas 2 Tempo Casa
+		"chutesGolTimeCasa2Tempo", "chutesForaTimeCasa2Tempo",
+		"chutesTraveTimeCasa2Tempo", "chutesBloqueadoTimeCasa2Tempo",
+		"escanteiosTimeCasa2Tempo", "ataquesPerigososTimeCasa2Tempo",
+		"penalidadesTimeCasa2Tempo",
+
+		// Estatisticas 5 Min Casa
+		"chutesGolTimeCasa5Min", "chutesForaTimeCasa5Min",
+		"chutesTraveTimeCasa5Min", "chutesBloqueadoTimeCasa5Min",
+		"escanteiosTimeCasa5Min", "ataquesPerigososTimeCasa5Min",
+		"penalidadesTimeCasa5Min",
+
+		// Estatisticas 10 Min Casa
+		"chutesGolTimeCasa10Min", "chutesForaTimeCasa10Min",
+		"chutesTraveTimeCasa10Min", "chutesBloqueadoTimeCasa10Min",
+		"escanteiosTimeCasa10Min", "ataquesPerigososTimeCasa10Min",
+		"penalidadesTimeCasa10Min",
+
+		// Classes CSS Time Casa
+		"classPosseBolaTimeCasa", "classChutesGolTimeCasa", "classChutesForaTimeCasa",
+		"classChutesTraveTimeCasa", "classChutesBloqueadoTimeCasa", "classEscanteiosTimeCasa",
+		"classAtaquesPerigososTimeCasa", "classPenalidadesTimeCasa",
+		"classProbabilidadesTimeCasa", "classPontos10MinTimeCasa",
+
+		// Classes CSS 1 Tempo Casa
+		"classChutesGolTimeCasa1Tempo", "classChutesForaTimeCasa1Tempo",
+		"classChutesTraveTimeCasa1Tempo", "classChutesBloqueadoTimeCasa1Tempo",
+		"classEscanteiosTimeCasa1Tempo", "classAtaquesPerigososTimeCasa1Tempo",
+		"classPenalidadesTimeCasa1Tempo",
+
+		// Classes CSS 2 Tempo Casa
+		"classChutesGolTimeCasa2Tempo", "classChutesForaTimeCasa2Tempo",
+		"classChutesTraveTimeCasa2Tempo", "classChutesBloqueadoTimeCasa2Tempo",
+		"classEscanteiosTimeCasa2Tempo", "classAtaquesPerigososTimeCasa2Tempo",
+		"classPenalidadesTimeCasa2Tempo",
+
+		// Classes CSS 5 Min Casa
+		"classChutesGolTimeCasa5Min", "classChutesForaTimeCasa5Min",
+		"classChutesTraveTimeCasa5Min", "classChutesBloqueadoTimeCasa5Min",
+		"classEscanteiosTimeCasa5Min", "classAtaquesPerigososTimeCasa5Min",
+		"classPenalidadesTimeCasa5Min",
+
+		// Classes CSS 10 Min Casa
+		"classChutesGolTimeCasa10Min", "classChutesForaTimeCasa10Min",
+		"classChutesTraveTimeCasa10Min", "classChutesBloqueadoTimeCasa10Min",
+		"classEscanteiosTimeCasa10Min", "classAtaquesPerigososTimeCasa10Min",
+		"classPenalidadesTimeCasa10Min",
+
+		// Estatisticas Time Fora
+		"posseBolaTimeFora", "chutesGolTimeFora", "chutesForaTimeFora",
+		"chutesTraveTimeFora", "chutesBloqueadoTimeFora", "escanteiosTimeFora",
+		"ataquesPerigososTimeFora", "penalidadesTimeFora",
+		"probabilidadesTimeFora", "pontos10MinTimeFora",
+
+		// Estatisticas 1 Tempo Fora
+		"chutesGolTimeFora1Tempo", "chutesForaTimeFora1Tempo",
+		"chutesTraveTimeFora1Tempo", "chutesBloqueadoTimeFora1Tempo",
+		"escanteiosTimeFora1Tempo", "ataquesPerigososTimeFora1Tempo",
+		"penalidadesTimeFora1Tempo",
+
+		// Estatisticas 2 Tempo Fora
+		"chutesGolTimeFora2Tempo", "chutesForaTimeFora2Tempo",
+		"chutesTraveTimeFora2Tempo", "chutesBloqueadoTimeFora2Tempo",
+		"escanteiosTimeFora2Tempo", "ataquesPerigososTimeFora2Tempo",
+		"penalidadesTimeFora2Tempo",
+
+		// Estatisticas 5 Min Fora
+		"chutesGolTimeFora5Min", "chutesForaTimeFora5Min",
+		"chutesTraveTimeFora5Min", "chutesBloqueadoTimeFora5Min",
+		"escanteiosTimeFora5Min", "ataquesPerigososTimeFora5Min",
+		"penalidadesTimeFora5Min",
+
+		// Estatisticas 10 Min Fora
+		"chutesGolTimeFora10Min", "chutesForaTimeFora10Min",
+		"chutesTraveTimeFora10Min", "chutesBloqueadoTimeFora10Min",
+		"escanteiosTimeFora10Min", "ataquesPerigososTimeFora10Min",
+		"penalidadesTimeFora10Min",
+
+		// Classes CSS Time Fora
+		"classPosseBolaTimeFora", "classChutesGolTimeFora", "classChutesForaTimeFora",
+		"classChutesTraveTimeFora", "classChutesBloqueadoTimeFora", "classEscanteiosTimeFora",
+		"classAtaquesPerigososTimeFora", "classPenalidadesTimeFora",
+		"classProbabilidadesTimeFora", "classPontos10MinTimeFora",
+
+		// Classes CSS 1 Tempo Fora
+		"classChutesGolTimeFora1Tempo", "classChutesForaTimeFora1Tempo",
+		"classChutesTraveTimeFora1Tempo", "classChutesBloqueadoTimeFora1Tempo",
+		"classEscanteiosTimeFora1Tempo", "classAtaquesPerigososTimeFora1Tempo",
+		"classPenalidadesTimeFora1Tempo",
+
+		// Classes CSS 2 Tempo Fora
+		"classChutesGolTimeFora2Tempo", "classChutesForaTimeFora2Tempo",
+		"classChutesTraveTimeFora2Tempo", "classChutesBloqueadoTimeFora2Tempo",
+		"classEscanteiosTimeFora2Tempo", "classAtaquesPerigososTimeFora2Tempo",
+		"classPenalidadesTimeFora2Tempo",
+
+		// Classes CSS 5 Min Fora
+		"classChutesGolTimeFora5Min", "classChutesForaTimeFora5Min",
+		"classChutesTraveTimeFora5Min", "classChutesBloqueadoTimeFora5Min",
+		"classEscanteiosTimeFora5Min", "classAtaquesPerigososTimeFora5Min",
+		"classPenalidadesTimeFora5Min",
+
+		// Classes CSS 10 Min Fora
+		"classChutesGolTimeFora10Min", "classChutesForaTimeFora10Min",
+		"classChutesTraveTimeFora10Min", "classChutesBloqueadoTimeFora10Min",
+		"classEscanteiosTimeFora10Min", "classAtaquesPerigososTimeFora10Min",
+		"classPenalidadesTimeFora10Min",
+
+		// Analise IA
+		"analiseIA",
+	}
+
+	for _, campo := range camposZerar {
+		delete(copia, campo)
+	}
+
+	return copia
 }

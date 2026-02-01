@@ -77,6 +77,18 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 	// Extrai filtros da query string
 	filtro := models.ParseFiltroFromRequest(r)
 
+	// Valida token do usuario
+	authResult := services.ValidateUserToken(filtro.IdUsuario, filtro.Token)
+
+	// Se usuario > 0 e token invalido, retorna 401
+	if filtro.IdUsuario > 0 && filtro.Token != "" && !authResult.IsValid {
+		http.Error(w, "Token invalido", http.StatusUnauthorized)
+		return
+	}
+
+	// Define se é assinante no filtro
+	filtro.IsAssinante = authResult.IsAssinante
+
 	// Headers SSE
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -96,7 +108,11 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 
 	// Log apenas a cada 100 conexoes para reduzir I/O
 	if connCount%100 == 0 || connCount <= 10 {
-		log.Printf("SSE %s: Nova conexao (user=%d) - Total: %d", endpoint, filtro.IdUsuario, connCount)
+		tipoUsuario := "free"
+		if filtro.IsAssinante {
+			tipoUsuario = "assinante"
+		}
+		log.Printf("SSE %s: Nova conexao (user=%d, %s) - Total: %d", endpoint, filtro.IdUsuario, tipoUsuario, connCount)
 	}
 
 	// Decrementa ao fechar
@@ -111,8 +127,12 @@ func (h *SSEHandler) handleSSE(w http.ResponseWriter, r *http.Request, endpoint 
 	fmt.Fprintf(w, "retry: 10000\n\n")
 	flusher.Flush()
 
-	// Ticker para enviar updates a cada 2 segundos
-	ticker := time.NewTicker(2 * time.Second)
+	// Ticker diferenciado: 2s para assinantes, 5s para free/anonimo
+	tickerDuration := 5 * time.Second
+	if filtro.IsAssinante {
+		tickerDuration = 2 * time.Second
+	}
+	ticker := time.NewTicker(tickerDuration)
 	defer ticker.Stop()
 
 	// Canal para detectar quando cliente desconecta
@@ -223,6 +243,21 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Extrai filtros da query string (para validacao de token)
+	filtro := models.ParseFiltroFromRequest(r)
+
+	// Valida token do usuario
+	authResult := services.ValidateUserToken(filtro.IdUsuario, filtro.Token)
+
+	// Se usuario > 0 e token invalido, retorna 401
+	if filtro.IdUsuario > 0 && filtro.Token != "" && !authResult.IsValid {
+		http.Error(w, "Token invalido", http.StatusUnauthorized)
+		return
+	}
+
+	// Define se é assinante no filtro
+	filtro.IsAssinante = authResult.IsAssinante
+
 	// Headers SSE
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -239,7 +274,11 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 	// Incrementa contador
 	connCount := atomic.AddInt64(&h.connections, 1)
 	if connCount%100 == 0 || connCount <= 10 {
-		log.Printf("SSE oraculo: Nova conexao (jogo=%s) - Total: %d", idWilliamhill, connCount)
+		tipoUsuario := "free"
+		if filtro.IsAssinante {
+			tipoUsuario = "assinante"
+		}
+		log.Printf("SSE oraculo: Nova conexao (jogo=%s, user=%d, %s) - Total: %d", idWilliamhill, filtro.IdUsuario, tipoUsuario, connCount)
 	}
 
 	defer func() {
@@ -253,15 +292,19 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "retry: 10000\n\n")
 	flusher.Flush()
 
-	// Ticker a cada 2 segundos
-	ticker := time.NewTicker(2 * time.Second)
+	// Ticker diferenciado: 2s para assinantes, 5s para free/anonimo
+	tickerDuration := 5 * time.Second
+	if filtro.IsAssinante {
+		tickerDuration = 2 * time.Second
+	}
+	ticker := time.NewTicker(tickerDuration)
 	defer ticker.Stop()
 
 	ctx := r.Context()
 	broadcaster := services.GetBroadcaster()
 
 	// Envia primeiro update imediatamente
-	finished := h.sendOraculoUpdateCached(w, flusher, idWilliamhill, broadcaster)
+	finished := h.sendOraculoUpdateCached(w, flusher, idWilliamhill, broadcaster, filtro.IsAssinante)
 	if finished {
 		return
 	}
@@ -271,7 +314,7 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			finished := h.sendOraculoUpdateCached(w, flusher, idWilliamhill, broadcaster)
+			finished := h.sendOraculoUpdateCached(w, flusher, idWilliamhill, broadcaster, filtro.IsAssinante)
 			if finished {
 				return
 			}
@@ -280,7 +323,7 @@ func (h *SSEHandler) handleOraculo(w http.ResponseWriter, r *http.Request) {
 }
 
 // sendOraculoUpdateCached envia update do oraculo usando cache e retorna true se jogo finalizou
-func (h *SSEHandler) sendOraculoUpdateCached(w http.ResponseWriter, flusher http.Flusher, idWilliamhill string, broadcaster *services.Broadcaster) bool {
+func (h *SSEHandler) sendOraculoUpdateCached(w http.ResponseWriter, flusher http.Flusher, idWilliamhill string, broadcaster *services.Broadcaster, isAssinante bool) bool {
 	data, err := broadcaster.GetOraculoCached(idWilliamhill)
 	if err != nil {
 		log.Printf("SSE oraculo: Erro ao buscar dados (jogo=%s): %v", idWilliamhill, err)
@@ -294,6 +337,11 @@ func (h *SSEHandler) sendOraculoUpdateCached(w http.ResponseWriter, flusher http
 		fmt.Fprintf(w, "event: error\ndata: {\"error\": \"Jogo nao encontrado no cache\"}\n\n")
 		flusher.Flush()
 		return false
+	}
+
+	// Se usuario free, filtra dados sensiveis
+	if !isAssinante {
+		data = services.FiltrarOraculoParaFree(data)
 	}
 
 	// Monta resposta no formato esperado pelo Oraculo.vue

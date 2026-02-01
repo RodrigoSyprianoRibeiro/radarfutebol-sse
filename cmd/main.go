@@ -38,6 +38,8 @@ func main() {
 		log.Println("Continuando sem MySQL (dados vêm do Redis)")
 	} else {
 		log.Println("MySQL inicializado")
+		// Inicializa cache de autenticacao (requer MySQL)
+		services.InitAuthCache()
 	}
 
 	// Inicializa Redis (database 0 - cache principal)

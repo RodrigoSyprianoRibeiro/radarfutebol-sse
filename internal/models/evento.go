@@ -358,3 +358,226 @@ type HomeResponse struct {
 }
 
 // Filtro esta definido em filtro.go
+
+// FiltrarParaFree retorna uma copia do evento com apenas campos liberados para usuarios free/anonimos
+// Remove: SL, alertas avancados, estatisticas, probabilidades, xG, pontos10Min, pressao, analise IA
+func (e *Evento) FiltrarParaFree() *Evento {
+	// Cria copia do evento
+	copia := *e
+
+	// Zera Score de Lances (SL)
+	copia.ScoreLances10MinTimeCasa = ""
+	copia.ScoreLances10MinTimeFora = ""
+	copia.ClassScoreLances10MinTimeCasa = ""
+	copia.ClassScoreLances10MinTimeFora = ""
+
+	// Zera alertas avancados (momento gol e pressao individual)
+	copia.AlertaMomentoGolAtivo = FlexBool(false)
+	copia.AlertaMomentoGolValor = ""
+	copia.AlertaPressaoIndividualAtivo = FlexBool(false)
+	copia.AlertaPressaoIndividualTime = ""
+	copia.AlertaPressaoIndividualNome = ""
+	copia.AlertaPressaoIndividualValor = ""
+	copia.PressaoTimeCasa = ""
+	copia.PressaoTimeFora = ""
+	copia.ClassPressaoTimeCasa = ""
+	copia.ClassPressaoTimeFora = ""
+	copia.SomaPressao = ""
+
+	// Zera estatisticas Time Casa
+	copia.PosseBolaTimeCasa = ""
+	copia.ChutesGolTimeCasa = ""
+	copia.ChutesForaTimeCasa = ""
+	copia.ChutesTraveTimeCasa = ""
+	copia.ChutesBloqueadoTimeCasa = ""
+	copia.EscanteiosTimeCasa = ""
+	copia.AtaquesPerigososTimeCasa = ""
+	copia.PenalidadesTimeCasa = ""
+	copia.ProbabilidadesTimeCasa = ""
+	copia.Pontos10MinTimeCasa = ""
+
+	// Zera estatisticas 1 Tempo Casa
+	copia.ChutesGolTimeCasa1Tempo = ""
+	copia.ChutesForaTimeCasa1Tempo = ""
+	copia.ChutesTraveTimeCasa1Tempo = ""
+	copia.ChutesBloqueadoTimeCasa1Tempo = ""
+	copia.EscanteiosTimeCasa1Tempo = ""
+	copia.AtaquesPerigososTimeCasa1Tempo = ""
+	copia.PenalidadesTimeCasa1Tempo = ""
+
+	// Zera estatisticas 2 Tempo Casa
+	copia.ChutesGolTimeCasa2Tempo = ""
+	copia.ChutesForaTimeCasa2Tempo = ""
+	copia.ChutesTraveTimeCasa2Tempo = ""
+	copia.ChutesBloqueadoTimeCasa2Tempo = ""
+	copia.EscanteiosTimeCasa2Tempo = ""
+	copia.AtaquesPerigososTimeCasa2Tempo = ""
+	copia.PenalidadesTimeCasa2Tempo = ""
+
+	// Zera estatisticas 5 Min Casa
+	copia.ChutesGolTimeCasa5Min = ""
+	copia.ChutesForaTimeCasa5Min = ""
+	copia.ChutesTraveTimeCasa5Min = ""
+	copia.ChutesBloqueadoTimeCasa5Min = ""
+	copia.EscanteiosTimeCasa5Min = ""
+	copia.AtaquesPerigososTimeCasa5Min = ""
+	copia.PenalidadesTimeCasa5Min = ""
+
+	// Zera estatisticas 10 Min Casa
+	copia.ChutesGolTimeCasa10Min = ""
+	copia.ChutesForaTimeCasa10Min = ""
+	copia.ChutesTraveTimeCasa10Min = ""
+	copia.ChutesBloqueadoTimeCasa10Min = ""
+	copia.EscanteiosTimeCasa10Min = ""
+	copia.AtaquesPerigososTimeCasa10Min = ""
+	copia.PenalidadesTimeCasa10Min = ""
+
+	// Zera classes CSS Time Casa
+	copia.ClassPosseBolaTimeCasa = ""
+	copia.ClassChutesGolTimeCasa = ""
+	copia.ClassChutesForaTimeCasa = ""
+	copia.ClassChutesTraveTimeCasa = ""
+	copia.ClassChutesBloqueadoTimeCasa = ""
+	copia.ClassEscanteiosTimeCasa = ""
+	copia.ClassAtaquesPerigososTimeCasa = ""
+	copia.ClassPenalidadesTimeCasa = ""
+	copia.ClassProbabilidadesTimeCasa = ""
+	copia.ClassPontos10MinTimeCasa = ""
+
+	// Zera classes CSS 1 Tempo Casa
+	copia.ClassChutesGolTimeCasa1Tempo = ""
+	copia.ClassChutesForaTimeCasa1Tempo = ""
+	copia.ClassChutesTraveTimeCasa1Tempo = ""
+	copia.ClassChutesBloqueadoTimeCasa1Tempo = ""
+	copia.ClassEscanteiosTimeCasa1Tempo = ""
+	copia.ClassAtaquesPerigososTimeCasa1Tempo = ""
+	copia.ClassPenalidadesTimeCasa1Tempo = ""
+
+	// Zera classes CSS 2 Tempo Casa
+	copia.ClassChutesGolTimeCasa2Tempo = ""
+	copia.ClassChutesForaTimeCasa2Tempo = ""
+	copia.ClassChutesTraveTimeCasa2Tempo = ""
+	copia.ClassChutesBloqueadoTimeCasa2Tempo = ""
+	copia.ClassEscanteiosTimeCasa2Tempo = ""
+	copia.ClassAtaquesPerigososTimeCasa2Tempo = ""
+	copia.ClassPenalidadesTimeCasa2Tempo = ""
+
+	// Zera classes CSS 5 Min Casa
+	copia.ClassChutesGolTimeCasa5Min = ""
+	copia.ClassChutesForaTimeCasa5Min = ""
+	copia.ClassChutesTraveTimeCasa5Min = ""
+	copia.ClassChutesBloqueadoTimeCasa5Min = ""
+	copia.ClassEscanteiosTimeCasa5Min = ""
+	copia.ClassAtaquesPerigososTimeCasa5Min = ""
+	copia.ClassPenalidadesTimeCasa5Min = ""
+
+	// Zera classes CSS 10 Min Casa
+	copia.ClassChutesGolTimeCasa10Min = ""
+	copia.ClassChutesForaTimeCasa10Min = ""
+	copia.ClassChutesTraveTimeCasa10Min = ""
+	copia.ClassChutesBloqueadoTimeCasa10Min = ""
+	copia.ClassEscanteiosTimeCasa10Min = ""
+	copia.ClassAtaquesPerigososTimeCasa10Min = ""
+	copia.ClassPenalidadesTimeCasa10Min = ""
+
+	// Zera estatisticas Time Fora
+	copia.PosseBolaTimeFora = ""
+	copia.ChutesGolTimeFora = ""
+	copia.ChutesForaTimeFora = ""
+	copia.ChutesTraveTimeFora = ""
+	copia.ChutesBloqueadoTimeFora = ""
+	copia.EscanteiosTimeFora = ""
+	copia.AtaquesPerigososTimeFora = ""
+	copia.PenalidadesTimeFora = ""
+	copia.ProbabilidadesTimeFora = ""
+	copia.Pontos10MinTimeFora = ""
+
+	// Zera estatisticas 1 Tempo Fora
+	copia.ChutesGolTimeFora1Tempo = ""
+	copia.ChutesForaTimeFora1Tempo = ""
+	copia.ChutesTraveTimeFora1Tempo = ""
+	copia.ChutesBloqueadoTimeFora1Tempo = ""
+	copia.EscanteiosTimeFora1Tempo = ""
+	copia.AtaquesPerigososTimeFora1Tempo = ""
+	copia.PenalidadesTimeFora1Tempo = ""
+
+	// Zera estatisticas 2 Tempo Fora
+	copia.ChutesGolTimeFora2Tempo = ""
+	copia.ChutesForaTimeFora2Tempo = ""
+	copia.ChutesTraveTimeFora2Tempo = ""
+	copia.ChutesBloqueadoTimeFora2Tempo = ""
+	copia.EscanteiosTimeFora2Tempo = ""
+	copia.AtaquesPerigososTimeFora2Tempo = ""
+	copia.PenalidadesTimeFora2Tempo = ""
+
+	// Zera estatisticas 5 Min Fora
+	copia.ChutesGolTimeFora5Min = ""
+	copia.ChutesForaTimeFora5Min = ""
+	copia.ChutesTraveTimeFora5Min = ""
+	copia.ChutesBloqueadoTimeFora5Min = ""
+	copia.EscanteiosTimeFora5Min = ""
+	copia.AtaquesPerigososTimeFora5Min = ""
+	copia.PenalidadesTimeFora5Min = ""
+
+	// Zera estatisticas 10 Min Fora
+	copia.ChutesGolTimeFora10Min = ""
+	copia.ChutesForaTimeFora10Min = ""
+	copia.ChutesTraveTimeFora10Min = ""
+	copia.ChutesBloqueadoTimeFora10Min = ""
+	copia.EscanteiosTimeFora10Min = ""
+	copia.AtaquesPerigososTimeFora10Min = ""
+	copia.PenalidadesTimeFora10Min = ""
+
+	// Zera classes CSS Time Fora
+	copia.ClassPosseBolaTimeFora = ""
+	copia.ClassChutesGolTimeFora = ""
+	copia.ClassChutesForaTimeFora = ""
+	copia.ClassChutesTraveTimeFora = ""
+	copia.ClassChutesBloqueadoTimeFora = ""
+	copia.ClassEscanteiosTimeFora = ""
+	copia.ClassAtaquesPerigososTimeFora = ""
+	copia.ClassPenalidadesTimeFora = ""
+	copia.ClassProbabilidadesTimeFora = ""
+	copia.ClassPontos10MinTimeFora = ""
+
+	// Zera classes CSS 1 Tempo Fora
+	copia.ClassChutesGolTimeFora1Tempo = ""
+	copia.ClassChutesForaTimeFora1Tempo = ""
+	copia.ClassChutesTraveTimeFora1Tempo = ""
+	copia.ClassChutesBloqueadoTimeFora1Tempo = ""
+	copia.ClassEscanteiosTimeFora1Tempo = ""
+	copia.ClassAtaquesPerigososTimeFora1Tempo = ""
+	copia.ClassPenalidadesTimeFora1Tempo = ""
+
+	// Zera classes CSS 2 Tempo Fora
+	copia.ClassChutesGolTimeFora2Tempo = ""
+	copia.ClassChutesForaTimeFora2Tempo = ""
+	copia.ClassChutesTraveTimeFora2Tempo = ""
+	copia.ClassChutesBloqueadoTimeFora2Tempo = ""
+	copia.ClassEscanteiosTimeFora2Tempo = ""
+	copia.ClassAtaquesPerigososTimeFora2Tempo = ""
+	copia.ClassPenalidadesTimeFora2Tempo = ""
+
+	// Zera classes CSS 5 Min Fora
+	copia.ClassChutesGolTimeFora5Min = ""
+	copia.ClassChutesForaTimeFora5Min = ""
+	copia.ClassChutesTraveTimeFora5Min = ""
+	copia.ClassChutesBloqueadoTimeFora5Min = ""
+	copia.ClassEscanteiosTimeFora5Min = ""
+	copia.ClassAtaquesPerigososTimeFora5Min = ""
+	copia.ClassPenalidadesTimeFora5Min = ""
+
+	// Zera classes CSS 10 Min Fora
+	copia.ClassChutesGolTimeFora10Min = ""
+	copia.ClassChutesForaTimeFora10Min = ""
+	copia.ClassChutesTraveTimeFora10Min = ""
+	copia.ClassChutesBloqueadoTimeFora10Min = ""
+	copia.ClassEscanteiosTimeFora10Min = ""
+	copia.ClassAtaquesPerigososTimeFora10Min = ""
+	copia.ClassPenalidadesTimeFora10Min = ""
+
+	// Zera analise IA
+	copia.AnaliseIA = ""
+
+	return &copia
+}
