@@ -99,6 +99,11 @@ func getEventosFromRedis() ([]*models.Evento, error) {
 		return nil, fmt.Errorf("erro ao decodificar eventos JSON: %w", err)
 	}
 
+	// Define TemAnaliseIA baseado se AnaliseIA tem conteudo
+	for _, e := range eventos {
+		e.TemAnaliseIA = e.AnaliseIA != ""
+	}
+
 	log.Printf("SSE: Carregados %d eventos do Redis", len(eventos))
 	return eventos, nil
 }

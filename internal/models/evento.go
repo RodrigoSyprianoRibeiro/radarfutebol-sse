@@ -315,6 +315,7 @@ type Evento struct {
 
 	// Extras
 	AnaliseIA          string   `json:"analiseIA"`
+	TemAnaliseIA       bool     `json:"temAnaliseIA"`
 	TeamStreaks        []any    `json:"teamStreaks"`
 	Favorito           FlexBool `json:"favorito"`
 	CampeonatoFavorito FlexBool `json:"campeonatoFavorito"`
