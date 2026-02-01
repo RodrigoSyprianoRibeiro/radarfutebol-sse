@@ -731,6 +731,12 @@ func FiltrarOraculoParaFree(data map[string]interface{}) map[string]interface{} 
 		"classEscanteiosTimeFora10Min", "classAtaquesPerigososTimeFora10Min",
 		"classPenalidadesTimeFora10Min",
 
+		// Acrescimos e previsao de acrescimos
+		"acrescimo1Tempo", "acrescimo2Tempo",
+		"classAcrescimo1Tempo", "classAcrescimo2Tempo",
+		"previsaoAcrescimo1Tempo", "previsaoAcrescimo2Tempo",
+		"classPrevisaoAcrescimo1Tempo", "classPrevisaoAcrescimo2Tempo",
+
 		// Analise IA
 		"analiseIA",
 	}

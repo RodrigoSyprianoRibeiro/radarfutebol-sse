@@ -576,6 +576,16 @@ func (e *Evento) FiltrarParaFree() *Evento {
 	copia.ClassAtaquesPerigososTimeFora10Min = ""
 	copia.ClassPenalidadesTimeFora10Min = ""
 
+	// Zera acrescimos e previsao de acrescimos
+	copia.Acrescimo1Tempo = ""
+	copia.Acrescimo2Tempo = ""
+	copia.ClassAcrescimo1Tempo = ""
+	copia.ClassAcrescimo2Tempo = ""
+	copia.PrevisaoAcrescimo1Tempo = ""
+	copia.PrevisaoAcrescimo2Tempo = ""
+	copia.ClassPrevisaoAcrescimo1Tempo = ""
+	copia.ClassPrevisaoAcrescimo2Tempo = ""
+
 	// Zera analise IA
 	copia.AnaliseIA = ""
 
