@@ -239,7 +239,20 @@ func aplicaFiltros(evento *models.Evento, filtro *models.Filtro, prefs *Preferen
 	if filtro.MostrarFiltroAcrescimo {
 		prev1, _ := strconv.Atoi(evento.PrevisaoAcrescimo1Tempo.String())
 		prev2, _ := strconv.Atoi(evento.PrevisaoAcrescimo2Tempo.String())
-		if prev1 < filtro.FiltroAcrescimoHt && prev2 < filtro.FiltroAcrescimoFt {
+
+		var passaHt, passaFt bool
+		if filtro.FiltroAcrescimoHtOperador == "<=" {
+			passaHt = prev1 <= filtro.FiltroAcrescimoHt
+		} else {
+			passaHt = prev1 >= filtro.FiltroAcrescimoHt
+		}
+		if filtro.FiltroAcrescimoFtOperador == "<=" {
+			passaFt = prev2 <= filtro.FiltroAcrescimoFt
+		} else {
+			passaFt = prev2 >= filtro.FiltroAcrescimoFt
+		}
+
+		if !passaHt && !passaFt {
 			return false
 		}
 	}

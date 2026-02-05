@@ -20,6 +20,8 @@ type Filtro struct {
 	MostrarFiltroAcrescimo      bool
 	FiltroAcrescimoHt           int
 	FiltroAcrescimoFt           int
+	FiltroAcrescimoHtOperador   string
+	FiltroAcrescimoFtOperador   string
 	MostrarApenasJogosOraculo   bool
 	MostrarApenasJogosBetfair   bool
 	MostrarApenasJogosOver      bool
@@ -52,6 +54,8 @@ func ParseFiltroFromRequest(r *http.Request) *Filtro {
 		MostrarFiltroAcrescimo:      getBoolParam(q.Get("mostrarFiltroAcrescimo")),
 		FiltroAcrescimoHt:           getIntParam(q.Get("filtroAcrescimoHt"), 1),
 		FiltroAcrescimoFt:           getIntParam(q.Get("filtroAcrescimoFt"), 1),
+		FiltroAcrescimoHtOperador:   getOperadorParam(q.Get("filtroAcrescimoHtOperador")),
+		FiltroAcrescimoFtOperador:   getOperadorParam(q.Get("filtroAcrescimoFtOperador")),
 		MostrarApenasJogosOraculo:   getBoolParam(q.Get("mostrarApenasJogosOraculo")),
 		MostrarApenasJogosBetfair:   getBoolParam(q.Get("mostrarApenasJogosBetfair")),
 		MostrarApenasJogosOver:      getBoolParam(q.Get("mostrarApenasJogosOver")),
@@ -72,6 +76,15 @@ func ParseFiltroFromRequest(r *http.Request) *Filtro {
 func getBoolParam(val string) bool {
 	val = strings.ToLower(strings.TrimSpace(val))
 	return val == "true" || val == "1" || val == "yes" || val == "on"
+}
+
+// getOperadorParam valida e retorna operador >= ou <=
+func getOperadorParam(val string) string {
+	val = strings.TrimSpace(val)
+	if val == "<=" {
+		return "<="
+	}
+	return ">="
 }
 
 // getIntParam converte string para int com valor default
