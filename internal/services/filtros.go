@@ -252,8 +252,14 @@ func aplicaFiltros(evento *models.Evento, filtro *models.Filtro, prefs *Preferen
 			passaFt = prev2 >= filtro.FiltroAcrescimoFt
 		}
 
-		if !passaHt && !passaFt {
-			return false
+		if filtro.FiltroAcrescimoCondicao == "e" {
+			if !passaHt || !passaFt {
+				return false
+			}
+		} else {
+			if !passaHt && !passaFt {
+				return false
+			}
 		}
 	}
 

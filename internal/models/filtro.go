@@ -22,6 +22,7 @@ type Filtro struct {
 	FiltroAcrescimoFt           int
 	FiltroAcrescimoHtOperador   string
 	FiltroAcrescimoFtOperador   string
+	FiltroAcrescimoCondicao     string
 	MostrarApenasJogosOraculo   bool
 	MostrarApenasJogosBetfair   bool
 	MostrarApenasJogosOver      bool
@@ -56,6 +57,7 @@ func ParseFiltroFromRequest(r *http.Request) *Filtro {
 		FiltroAcrescimoFt:           getIntParam(q.Get("filtroAcrescimoFt"), 1),
 		FiltroAcrescimoHtOperador:   getOperadorParam(q.Get("filtroAcrescimoHtOperador")),
 		FiltroAcrescimoFtOperador:   getOperadorParam(q.Get("filtroAcrescimoFtOperador")),
+		FiltroAcrescimoCondicao:     getCondicaoParam(q.Get("filtroAcrescimoCondicao")),
 		MostrarApenasJogosOraculo:   getBoolParam(q.Get("mostrarApenasJogosOraculo")),
 		MostrarApenasJogosBetfair:   getBoolParam(q.Get("mostrarApenasJogosBetfair")),
 		MostrarApenasJogosOver:      getBoolParam(q.Get("mostrarApenasJogosOver")),
@@ -76,6 +78,15 @@ func ParseFiltroFromRequest(r *http.Request) *Filtro {
 func getBoolParam(val string) bool {
 	val = strings.ToLower(strings.TrimSpace(val))
 	return val == "true" || val == "1" || val == "yes" || val == "on"
+}
+
+// getCondicaoParam valida e retorna condicao 'e' ou 'ou'
+func getCondicaoParam(val string) string {
+	val = strings.ToLower(strings.TrimSpace(val))
+	if val == "e" {
+		return "e"
+	}
+	return "ou"
 }
 
 // getOperadorParam valida e retorna operador >= ou <=
