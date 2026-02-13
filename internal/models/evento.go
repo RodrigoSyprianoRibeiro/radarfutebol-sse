@@ -80,6 +80,7 @@ type Evento struct {
 	LinkBetfair        string `json:"linkBetfair"`
 	LinkOddjusta       string `json:"linkOddjusta"`
 	LinkBolsadeaposta  string `json:"linkBolsadeaposta"`
+	LinkFulltbet       string `json:"linkFulltbet"`
 	LinkOrbit          string `json:"linkOrbit"`
 
 	// Estatisticas Time Casa (do Redis/oraculo)
