@@ -621,6 +621,8 @@ func FiltrarOraculoParaFree(data map[string]interface{}) map[string]interface{} 
 		// Score de Lances (SL)
 		"scoreLances10MinTimeCasa", "scoreLances10MinTimeFora",
 		"classScoreLances10MinTimeCasa", "classScoreLances10MinTimeFora",
+		"scoreLances5MinTimeCasa", "scoreLances5MinTimeFora",
+		"classScoreLances5MinTimeCasa", "classScoreLances5MinTimeFora",
 
 		// Alertas avancados
 		"alertaMomentoGolAtivo", "alertaMomentoGolValor",

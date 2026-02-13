@@ -280,6 +280,10 @@ type Evento struct {
 	ScoreLances10MinTimeFora      FlexValue `json:"scoreLances10MinTimeFora"`
 	ClassScoreLances10MinTimeCasa string    `json:"classScoreLances10MinTimeCasa"`
 	ClassScoreLances10MinTimeFora string    `json:"classScoreLances10MinTimeFora"`
+	ScoreLances5MinTimeCasa       FlexValue `json:"scoreLances5MinTimeCasa"`
+	ScoreLances5MinTimeFora       FlexValue `json:"scoreLances5MinTimeFora"`
+	ClassScoreLances5MinTimeCasa  string    `json:"classScoreLances5MinTimeCasa"`
+	ClassScoreLances5MinTimeFora  string    `json:"classScoreLances5MinTimeFora"`
 
 	// Alertas (FlexBool pois PHP envia 0/1)
 	AlertarGolTimeCasa           FlexBool `json:"alertarGolTimeCasa"`
@@ -372,6 +376,10 @@ func (e *Evento) FiltrarParaFree() *Evento {
 	copia.ScoreLances10MinTimeFora = ""
 	copia.ClassScoreLances10MinTimeCasa = ""
 	copia.ClassScoreLances10MinTimeFora = ""
+	copia.ScoreLances5MinTimeCasa = ""
+	copia.ScoreLances5MinTimeFora = ""
+	copia.ClassScoreLances5MinTimeCasa = ""
+	copia.ClassScoreLances5MinTimeFora = ""
 
 	// Zera alertas avancados (momento gol e pressao individual)
 	copia.AlertaMomentoGolAtivo = FlexBool(false)
