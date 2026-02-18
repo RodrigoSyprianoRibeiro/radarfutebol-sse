@@ -192,6 +192,33 @@ func GetCountsByStatus() (live, total, gols int, err error) {
 	return live, total, 0, nil
 }
 
+// getEventoInfoFromDB busca status, escalacao e acrescimos do evento pelo idWilliamhill
+func getEventoInfoFromDB(idWilliamhill string) (*EventoInfo, error) {
+	query := `SELECT status, escalacao, desconto_ht, desconto_ft FROM eventos WHERE id_williamhill = ? LIMIT 1`
+
+	var (
+		status       string
+		temEscalacao int
+		descontoHt   sql.NullInt64
+		descontoFt   sql.NullInt64
+	)
+
+	err := db.QueryRow(query, idWilliamhill).Scan(&status, &temEscalacao, &descontoHt, &descontoFt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("erro ao buscar evento: %w", err)
+	}
+
+	return &EventoInfo{
+		Status:       status,
+		TemEscalacao: temEscalacao,
+		DescontoHt:   nullIntToPtr(descontoHt),
+		DescontoFt:   nullIntToPtr(descontoFt),
+	}, nil
+}
+
 func nullStringToString(ns sql.NullString) string {
 	if ns.Valid {
 		return ns.String

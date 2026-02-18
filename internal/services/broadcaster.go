@@ -183,7 +183,7 @@ func (b *Broadcaster) GetEventosHomeFiltradoCached(filtro *models.Filtro) ([]byt
 	return json.Marshal(response)
 }
 
-// GetOraculoCached busca oraculo do cache ou Redis
+// GetOraculoCached busca oraculo do cache ou Redis e mergeia dados do evento (status, acrescimos)
 func (b *Broadcaster) GetOraculoCached(idWilliamhill string) (map[string]interface{}, error) {
 	b.oraculoCacheMu.RLock()
 	cached, exists := b.oraculoCache[idWilliamhill]
@@ -200,8 +200,10 @@ func (b *Broadcaster) GetOraculoCached(idWilliamhill string) (map[string]interfa
 		return nil, err
 	}
 
-	// Atualiza cache
+	// Mergeia dados do evento (status, acrescimos, temEscalacao) do cache em memoria
 	if data != nil {
+		b.mergeEventoNoOraculo(data, idWilliamhill)
+
 		b.oraculoCacheMu.Lock()
 		b.oraculoCache[idWilliamhill] = &OraculoCache{
 			Data:      data,
@@ -211,6 +213,91 @@ func (b *Broadcaster) GetOraculoCached(idWilliamhill string) (map[string]interfa
 	}
 
 	return data, nil
+}
+
+// mergeEventoNoOraculo injeta status, temEscalacao e acrescimos reais do evento no oraculo
+// Primeiro tenta o cache de eventos em memoria (jogos ativos), depois MySQL com cache local
+func (b *Broadcaster) mergeEventoNoOraculo(data map[string]interface{}, idWilliamhill string) {
+	// Tenta cache de eventos em memoria (jogos ativos, atualizado a cada 2s)
+	evento := b.findEventoByIdWilliamhill(idWilliamhill)
+	if evento != nil {
+		data["status"] = evento.Status
+		data["temEscalacao"] = evento.TemEscalacao
+		if evento.DescontoHt != nil {
+			data["acrescimo1Tempo"] = *evento.DescontoHt
+		}
+		if evento.DescontoFt != nil {
+			data["acrescimo2Tempo"] = *evento.DescontoFt
+		}
+		return
+	}
+
+	// Evento nao esta no cache de ativos - busca status do MySQL com cache local
+	info := b.getEventoInfoCached(idWilliamhill)
+	if info != nil {
+		data["status"] = info.Status
+		data["temEscalacao"] = info.TemEscalacao
+		if info.DescontoHt != nil {
+			data["acrescimo1Tempo"] = *info.DescontoHt
+		}
+		if info.DescontoFt != nil {
+			data["acrescimo2Tempo"] = *info.DescontoFt
+		}
+	}
+}
+
+// findEventoByIdWilliamhill busca evento no cache em memoria pelo idWilliamhill
+func (b *Broadcaster) findEventoByIdWilliamhill(idWilliamhill string) *models.Evento {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	for _, e := range b.eventosCache {
+		if e.IdWilliamhill == idWilliamhill {
+			return e
+		}
+	}
+	return nil
+}
+
+// EventoInfo dados minimos do evento para merge no oraculo
+type EventoInfo struct {
+	Status       string
+	TemEscalacao int
+	DescontoHt   *int
+	DescontoFt   *int
+	CachedAt     time.Time
+}
+
+// Cache local de eventos consultados no MySQL (para jogos finalizados que saem do eventosCache)
+var eventoInfoCache = struct {
+	sync.RWMutex
+	m map[string]*EventoInfo
+}{m: make(map[string]*EventoInfo)}
+
+// getEventoInfoCached busca status do evento no MySQL com cache de 10s
+func (b *Broadcaster) getEventoInfoCached(idWilliamhill string) *EventoInfo {
+	eventoInfoCache.RLock()
+	cached, exists := eventoInfoCache.m[idWilliamhill]
+	eventoInfoCache.RUnlock()
+
+	if exists && time.Since(cached.CachedAt) < 10*time.Second {
+		return cached
+	}
+
+	info, err := getEventoInfoFromDB(idWilliamhill)
+	if err != nil {
+		log.Printf("Broadcaster: erro ao buscar evento %s do MySQL: %v", idWilliamhill, err)
+		return cached // retorna cache antigo se houver
+	}
+
+	if info != nil {
+		info.CachedAt = time.Now()
+		eventoInfoCache.Lock()
+		eventoInfoCache.m[idWilliamhill] = info
+		eventoInfoCache.Unlock()
+	}
+
+	return info
 }
 
 // oraculoCleaner limpa cache de oraculo antigo periodicamente
