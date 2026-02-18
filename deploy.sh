@@ -6,6 +6,8 @@
 
 set -e
 
+export PATH=$PATH:/usr/local/go/bin
+
 echo "=========================================="
 echo "  DEPLOY SSE GO - $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=========================================="
@@ -22,12 +24,14 @@ echo "[2/4] Build (otimizado para producao)..."
 go build -ldflags="-s -w" -o bin/radarfutebol-sse ./cmd/main.go
 
 echo ""
-echo "[3/4] Restart PM2..."
-pm2 restart sse-go
+echo "[3/4] Restart systemd..."
+systemctl restart sse-go
 
 echo ""
 echo "[4/4] Verificando..."
 sleep 2
+systemctl status sse-go --no-pager | head -10
+echo ""
 curl -s http://localhost:3005/sse/health
 
 echo ""
