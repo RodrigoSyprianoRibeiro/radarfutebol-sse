@@ -223,6 +223,7 @@ func (b *Broadcaster) mergeEventoNoOraculo(data map[string]interface{}, idWillia
 	if evento != nil {
 		data["status"] = evento.Status
 		data["temEscalacao"] = evento.TemEscalacao
+		data["problemaRadar"] = evento.ProblemaRadar
 		if evento.DescontoHt != nil {
 			data["acrescimo1Tempo"] = *evento.DescontoHt
 		}
@@ -237,6 +238,7 @@ func (b *Broadcaster) mergeEventoNoOraculo(data map[string]interface{}, idWillia
 	if info != nil {
 		data["status"] = info.Status
 		data["temEscalacao"] = info.TemEscalacao
+		data["problemaRadar"] = info.ProblemaRadar
 		if info.DescontoHt != nil {
 			data["acrescimo1Tempo"] = *info.DescontoHt
 		}
@@ -261,11 +263,12 @@ func (b *Broadcaster) findEventoByIdWilliamhill(idWilliamhill string) *models.Ev
 
 // EventoInfo dados minimos do evento para merge no oraculo
 type EventoInfo struct {
-	Status       string
-	TemEscalacao int
-	DescontoHt   *int
-	DescontoFt   *int
-	CachedAt     time.Time
+	Status        string
+	TemEscalacao  int
+	ProblemaRadar int
+	DescontoHt    *int
+	DescontoFt    *int
+	CachedAt      time.Time
 }
 
 // Cache local de eventos consultados no MySQL (para jogos finalizados que saem do eventosCache)
