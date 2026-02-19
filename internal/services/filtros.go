@@ -76,9 +76,10 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 		}
 		countJogosTotal++
 
-		// Conta gols (alertarSomGol ativo e som ligado)
+		// Conta gols (alerta de gol ativo e som ligado)
+		// Usa AlertarGolTimeCasa/Fora que duram 30s (AlertarSomGol dura apenas 1 ciclo do crawler e o broadcaster pode perder)
 		// Só conta se ainda não notificou este gol (baseado no tempo do jogo)
-		if filtro.SomLigado && filtro.IdUsuario > 0 && evento.AlertarSomGol.Bool() {
+		if filtro.SomLigado && filtro.IdUsuario > 0 && (evento.AlertarGolTimeCasa.Bool() || evento.AlertarGolTimeFora.Bool()) {
 			idEventoStr := strconv.Itoa(evento.IdEvento)
 			tempoAtual := evento.TempoAtual
 			tempoAnterior, jaNotificou := alertasGol[idEventoStr]
@@ -168,9 +169,10 @@ func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *
 		}
 		countJogosTotal++
 
-		// Conta gols (alertarSomGol ativo e som ligado)
+		// Conta gols (alerta de gol ativo e som ligado)
+		// Usa AlertarGolTimeCasa/Fora que duram 30s (AlertarSomGol dura apenas 1 ciclo do crawler e o broadcaster pode perder)
 		// Só conta se ainda não notificou este gol (baseado no tempo do jogo)
-		if filtro.SomLigado && filtro.IdUsuario > 0 && evento.AlertarSomGol.Bool() {
+		if filtro.SomLigado && filtro.IdUsuario > 0 && (evento.AlertarGolTimeCasa.Bool() || evento.AlertarGolTimeFora.Bool()) {
 			idEventoStr := strconv.Itoa(evento.IdEvento)
 			tempoAtual := evento.TempoAtual
 			tempoAnterior, jaNotificou := alertasGol[idEventoStr]
