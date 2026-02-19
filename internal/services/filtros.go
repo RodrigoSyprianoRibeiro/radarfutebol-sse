@@ -13,7 +13,7 @@ import (
 )
 
 // Cache de alertas de gol por usuario (evita som repetido)
-// Chave: alerta-gol-usuario-{userId}, Valor: map[idEvento]tempo
+// Chave: alerta-gol-usuario-{userId}, Valor: map[idEvento]placar
 func getAlertasGolUsuario(userID int) map[string]string {
 	if rdbPrefs == nil || userID == 0 {
 		return make(map[string]string)
@@ -30,6 +30,18 @@ func getAlertasGolUsuario(userID int) map[string]string {
 		return make(map[string]string)
 	}
 	return alertas
+}
+
+// placarEvento retorna o placar no formato "casa-fora" para usar como chave de dedup de gols
+func placarEvento(evento *models.Evento) string {
+	casa, fora := 0, 0
+	if evento.GolTimeCasaFt != nil {
+		casa = *evento.GolTimeCasaFt
+	}
+	if evento.GolTimeForaFt != nil {
+		fora = *evento.GolTimeForaFt
+	}
+	return fmt.Sprintf("%d-%d", casa, fora)
 }
 
 func setAlertasGolUsuario(userID int, alertas map[string]string) {
@@ -76,18 +88,17 @@ func FiltrarEventosPainel(eventos []*models.Evento, filtro *models.Filtro, prefs
 		}
 		countJogosTotal++
 
-		// Conta gols (alerta de gol ativo e som ligado)
-		// Usa AlertarGolTimeCasa/Fora que duram 30s (AlertarSomGol dura apenas 1 ciclo do crawler e o broadcaster pode perder)
-		// Só conta se ainda não notificou este gol (baseado no tempo do jogo)
+		// Conta gols para som de alerta
+		// Usa AlertarGolTimeCasa/Fora que duram 30s (AlertarSomGol dura apenas 1 ciclo e o broadcaster pode perder)
+		// Dedup por placar: so conta se o placar mudou desde a ultima notificacao
 		if filtro.SomLigado && filtro.IdUsuario > 0 && (evento.AlertarGolTimeCasa.Bool() || evento.AlertarGolTimeFora.Bool()) {
 			idEventoStr := strconv.Itoa(evento.IdEvento)
-			tempoAtual := evento.TempoAtual
-			tempoAnterior, jaNotificou := alertasGol[idEventoStr]
+			placar := placarEvento(evento)
+			placarAnterior, jaNotificou := alertasGol[idEventoStr]
 
-			// Só conta como novo gol se não notificou ou se o tempo mudou
-			if !jaNotificou || tempoAnterior != tempoAtual {
+			if !jaNotificou || placarAnterior != placar {
 				countGols++
-				alertasGol[idEventoStr] = tempoAtual
+				alertasGol[idEventoStr] = placar
 				alertasGolModificado = true
 			}
 		}
@@ -169,18 +180,17 @@ func FiltrarEventosHome(eventos []*models.Evento, filtro *models.Filtro, prefs *
 		}
 		countJogosTotal++
 
-		// Conta gols (alerta de gol ativo e som ligado)
-		// Usa AlertarGolTimeCasa/Fora que duram 30s (AlertarSomGol dura apenas 1 ciclo do crawler e o broadcaster pode perder)
-		// Só conta se ainda não notificou este gol (baseado no tempo do jogo)
+		// Conta gols para som de alerta
+		// Usa AlertarGolTimeCasa/Fora que duram 30s (AlertarSomGol dura apenas 1 ciclo e o broadcaster pode perder)
+		// Dedup por placar: so conta se o placar mudou desde a ultima notificacao
 		if filtro.SomLigado && filtro.IdUsuario > 0 && (evento.AlertarGolTimeCasa.Bool() || evento.AlertarGolTimeFora.Bool()) {
 			idEventoStr := strconv.Itoa(evento.IdEvento)
-			tempoAtual := evento.TempoAtual
-			tempoAnterior, jaNotificou := alertasGol[idEventoStr]
+			placar := placarEvento(evento)
+			placarAnterior, jaNotificou := alertasGol[idEventoStr]
 
-			// Só conta como novo gol se não notificou ou se o tempo mudou
-			if !jaNotificou || tempoAnterior != tempoAtual {
+			if !jaNotificou || placarAnterior != placar {
 				countGols++
-				alertasGol[idEventoStr] = tempoAtual
+				alertasGol[idEventoStr] = placar
 				alertasGolModificado = true
 			}
 		}
