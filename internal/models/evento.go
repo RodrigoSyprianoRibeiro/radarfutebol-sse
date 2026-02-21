@@ -319,11 +319,12 @@ type Evento struct {
 	ClassPrevisaoAcrescimo2Tempo string    `json:"classPrevisaoAcrescimo2Tempo"`
 
 	// Extras
-	AnaliseIA          string   `json:"analiseIA"`
-	TemAnaliseIA       bool     `json:"temAnaliseIA"`
-	TeamStreaks        []any    `json:"teamStreaks"`
-	Favorito           FlexBool `json:"favorito"`
-	CampeonatoFavorito FlexBool `json:"campeonatoFavorito"`
+	AnaliseIA          string                   `json:"analiseIA"`
+	TemAnaliseIA       bool                     `json:"temAnaliseIA"`
+	TeamStreaks        []any                    `json:"teamStreaks"`
+	Favorito           FlexBool                 `json:"favorito"`
+	CampeonatoFavorito FlexBool                 `json:"campeonatoFavorito"`
+	LinhaDoTempo       []map[string]interface{} `json:"linhaDoTempo"`
 }
 
 // Campeonato representa um campeonato com seus eventos
@@ -598,6 +599,9 @@ func (e *Evento) FiltrarParaFree() *Evento {
 
 	// Zera analise IA
 	copia.AnaliseIA = ""
+
+	// Zera linha do tempo
+	copia.LinhaDoTempo = nil
 
 	return &copia
 }
