@@ -24,8 +24,11 @@ echo "[2/4] Build (otimizado para producao)..."
 go build -ldflags="-s -w" -o bin/radarfutebol-sse ./cmd/main.go
 
 echo ""
-echo "[3/4] Restart systemd..."
-systemctl restart sse-go
+echo "[3/4] Copiando binario e reiniciando..."
+systemctl stop sse-go
+sleep 1
+cp bin/radarfutebol-sse sse-server
+systemctl start sse-go
 
 echo ""
 echo "[4/4] Verificando..."
